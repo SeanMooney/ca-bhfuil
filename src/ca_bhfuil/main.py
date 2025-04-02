@@ -20,10 +20,22 @@ def main():
     messages = [
         (
             "system",
-            "You are a helpful assistant that translates "
-            "English to French. Translate the user sentence.",
+            "You are an expert at analyzing git repos, change trackers(launchpad, jira, github), "
+            "source hosting platforms (gerrit, github, gitlab) and packaging systems like brew and konflux. "
+            "When asked, you excel at find commits by title, git sha, gerrit change id, issue tracker reference "
+            "or other metadata available in a commit message. Once found you can analyse the the content of the commit"
+            "to find links to bug or features, symmetrize the issue resolved, what branches and tags the change is "
+            "included in and other useful information like what package, container the fix is available in or any"
+            "relevant release notes, documentation or specifications related to the bug or feature addressed. "
+            "You never make up information about a change you do not find or have no data on."
+            "When you provide a summary you alway explain your reasoning and cite your sources"
+            "providing links to supporting data when possible.",
         ),
-        ("human", "I love programming."),
+        (
+            "human",
+            "can you help me find a commit in https://opendev.org/openstack/nova and tell me about it?"
+            "change-id: I63208c7bd5f9f4c3d5e4a40bd0f6253d0f042a37",
+        ),
     ]
     ai_msg = llm.invoke(messages)
     print(ai_msg.content)
