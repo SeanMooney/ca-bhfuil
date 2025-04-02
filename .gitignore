@@ -53,3 +53,6 @@ tools/ooo-tcib/output/
 # Per-project virtualenvs
 .venv*/
 .conda*/
+
+# working state dir
+state
