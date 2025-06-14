@@ -91,7 +91,7 @@ def main(
     ),
 ) -> None:
     """Ca-Bhfuil: Git repository analysis tool for open source maintainers."""
-    pass
+    app()
 
 
 if __name__ == "__main__":
