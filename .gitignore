@@ -56,3 +56,16 @@ tools/ooo-tcib/output/
 
 # working state dir
 state
+
+# Ca-bhfuil specific ignores
+.ca-bhfuil/
+*.ca-bhfuil.cache
+.ca-bhfuil-cache/
+
+# AI session logs
+ai/session-logs/
+*.session.log
+
+# Development artifacts
+.ruff_cache/
+.pre-commit-cache/
