@@ -1,7 +1,7 @@
 """Configuration management for ca-bhfuil."""
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,7 +19,7 @@ class CacheSettings(BaseModel):
 class GitSettings(BaseModel):
     """Git-related configuration."""
 
-    default_repo_path: Optional[Path] = Field(default=None, description="Default repository path")
+    default_repo_path: Path | None = Field(default=None, description="Default repository path")
     max_commit_history: int = Field(default=10000, description="Maximum commits to analyze")
 
 
@@ -27,10 +27,10 @@ class IssueTrackerSettings(BaseModel):
     """Issue tracker integration settings."""
 
     enabled: bool = Field(default=True, description="Enable issue tracker integration")
-    github_token: Optional[str] = Field(default=None, description="GitHub API token")
-    jira_base_url: Optional[str] = Field(default=None, description="JIRA base URL")
-    jira_username: Optional[str] = Field(default=None, description="JIRA username")
-    jira_token: Optional[str] = Field(default=None, description="JIRA API token")
+    github_token: str | None = Field(default=None, description="GitHub API token")
+    jira_base_url: str | None = Field(default=None, description="JIRA base URL")
+    jira_username: str | None = Field(default=None, description="JIRA username")
+    jira_token: str | None = Field(default=None, description="JIRA API token")
     request_timeout_seconds: int = Field(default=30, description="HTTP request timeout")
 
 
@@ -43,7 +43,7 @@ class LoggingSettings(BaseModel):
         description="Log format string"
     )
     file_enabled: bool = Field(default=False, description="Enable file logging")
-    file_path: Optional[Path] = Field(default=None, description="Log file path")
+    file_path: Path | None = Field(default=None, description="Log file path")
 
 
 class CaBhfuilSettings(BaseSettings):
@@ -97,7 +97,7 @@ class CaBhfuilSettings(BaseSettings):
 
 
 # Global settings instance
-_settings: Optional[CaBhfuilSettings] = None
+_settings: CaBhfuilSettings | None = None
 
 
 def get_settings() -> CaBhfuilSettings:

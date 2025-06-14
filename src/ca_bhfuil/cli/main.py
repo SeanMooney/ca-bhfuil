@@ -1,7 +1,6 @@
 """Main CLI application for ca-bhfuil."""
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from loguru import logger
@@ -19,7 +18,7 @@ app = typer.Typer(
 @app.command()
 def search(
     query: str = typer.Argument(..., help="Search query (SHA, partial SHA, or commit message pattern)"),
-    repo_path: Optional[Path] = typer.Option(
+    repo_path: Path | None = typer.Option(
         None,
         "--repo",
         "-r",
@@ -39,7 +38,7 @@ def search(
 
 @app.command()
 def status(
-    repo_path: Optional[Path] = typer.Option(
+    repo_path: Path | None = typer.Option(
         None,
         "--repo",
         "-r",
@@ -83,7 +82,7 @@ def version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         callback=version_callback,

@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import diskcache as dc
 from loguru import logger
@@ -14,7 +14,7 @@ from ca_bhfuil.core.config import get_settings
 class CacheManager:
     """High-level cache manager using diskcache."""
 
-    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, cache_dir: Path | None = None) -> None:
         """Initialize the cache manager.
 
         Args:
@@ -56,7 +56,7 @@ class CacheManager:
         self,
         key: str,
         value: Any,
-        ttl: Optional[Union[int, timedelta]] = None
+        ttl: int | timedelta | None = None
     ) -> bool:
         """Set value in cache.
 
@@ -150,7 +150,7 @@ class CacheManager:
 
 
 # Global cache manager instance
-_cache_manager: Optional[CacheManager] = None
+_cache_manager: CacheManager | None = None
 
 
 def get_cache_manager() -> CacheManager:
@@ -176,7 +176,7 @@ def cache_git_operation(repo_path: str, operation: str, *args: str) -> str:
     return cache_manager.cache_key("git", repo_path, operation, *args)
 
 
-def cache_api_request(url: str, params: Optional[dict[str, Any]] = None) -> str:
+def cache_api_request(url: str, params: dict[str, Any] | None = None) -> str:
     """Generate cache key for API requests.
 
     Args:
