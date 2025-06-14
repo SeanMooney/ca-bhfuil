@@ -1,3 +1,0 @@
-OLLAMA_HOST = "http://localhost:11434"
-OLLAMA_MODEL = "granite3.2:8b"
-EMBEDDING_MODEL = "all-minilm:l6-v2"
