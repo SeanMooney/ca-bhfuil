@@ -1,0 +1,158 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ca-bhfuil"
+version = "0.1.0"
+description = "Git repository analysis tool for tracking commits across stable branches"
+authors = [
+    {name = "Ca-Bhfuil Project"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["git", "analysis", "commits", "branches", "open-source"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    # AI/Agent Framework
+    "pydantic-ai>=0.0.1",
+    "fastmcp>=0.1.0",
+    
+    # High-Performance Git Analysis
+    "pygit2>=1.13.0",
+    "diskcache>=5.6.0",
+    
+    # Issue Tracker Integration
+    "httpx>=0.25.0",
+    "regex>=2023.0.0",
+    
+    # Configuration Management
+    "pydantic-settings[yaml]>=2.0.0",
+    "python-dotenv>=1.0.0",
+    
+    # Terminal Interface
+    "typer[all]>=0.9.0",
+    "prompt-toolkit>=3.0.0",
+    
+    # Logging
+    "loguru>=0.7.0",
+    
+    # Utilities
+    "aiofiles>=23.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+]
+ai = [
+    "pydantic-ai>=0.0.1",
+    "fastmcp>=0.1.0",
+]
+advanced-analysis = [
+    "pydriller>=2.5.0",
+]
+text-processing = [
+    "nltk>=3.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/seandstewart/ca-bhfuil"
+Repository = "https://github.com/seandstewart/ca-bhfuil"
+Issues = "https://github.com/seandstewart/ca-bhfuil/issues"
+
+[project.scripts]
+ca-bhfuil = "ca_bhfuil.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ca_bhfuil"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/pyproject.toml",
+]
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long, handled by formatter
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ARG", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ca_bhfuil"]
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.10"
+packages = ["ca_bhfuil"]
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pygit2.*",
+    "diskcache.*",
+    "fastmcp.*",
+    "pydantic_ai.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+asyncio_mode = "auto"
