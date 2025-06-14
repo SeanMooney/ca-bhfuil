@@ -25,9 +25,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    # AI/Agent Framework
-    "pydantic-ai>=0.0.1",
-    "fastmcp>=0.1.0",
+    # Core Framework
+    "pydantic>=2.0.0",
     
     # High-Performance Git Analysis
     "pygit2>=1.13.0",
@@ -64,6 +63,9 @@ ai = [
     "pydantic-ai>=0.0.1",
     "fastmcp>=0.1.0",
 ]
+all = [
+    "ca-bhfuil[dev,ai,advanced-analysis,text-processing]",
+]
 advanced-analysis = [
     "pydriller>=2.5.0",
 ]
@@ -88,11 +90,17 @@ include = [
     "/tests",
     "/README.md",
     "/pyproject.toml",
+    "/CLAUDE.md",
+]
+exclude = [
+    "/.venv",
+    "/.*",
+    "/uv.lock",
 ]
 
 # Ruff configuration
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 88
 src = ["src", "tests"]
 
@@ -156,3 +164,16 @@ markers = [
     "unit: marks tests as unit tests",
 ]
 asyncio_mode = "auto"
+
+# UV configuration
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+]
+
+[tool.uv.sources]
+# Add any custom source configurations here if needed

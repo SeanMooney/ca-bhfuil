@@ -1,7 +1,6 @@
 """Commit-related data models."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,9 +20,9 @@ class CommitInfo(BaseModel):
     parents: list[str] = Field(default_factory=list, description="Parent commit SHAs")
     branches: list[str] = Field(default_factory=list, description="Branches containing this commit")
     tags: list[str] = Field(default_factory=list, description="Tags pointing to this commit")
-    files_changed: Optional[int] = Field(None, description="Number of files changed")
-    insertions: Optional[int] = Field(None, description="Number of insertions")
-    deletions: Optional[int] = Field(None, description="Number of deletions")
+    files_changed: int | None = Field(None, description="Number of files changed")
+    insertions: int | None = Field(None, description="Number of insertions")
+    deletions: int | None = Field(None, description="Number of deletions")
 
     class Config:
         """Pydantic model configuration."""

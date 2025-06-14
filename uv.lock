@@ -109,11 +109,10 @@ source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "diskcache" },
-    { name = "fastmcp" },
     { name = "httpx" },
     { name = "loguru" },
     { name = "prompt-toolkit" },
-    { name = "pydantic-ai" },
+    { name = "pydantic" },
     { name = "pydantic-settings", extra = ["yaml"] },
     { name = "pygit2" },
     { name = "python-dotenv" },
@@ -129,6 +128,17 @@ ai = [
     { name = "fastmcp" },
     { name = "pydantic-ai" },
 ]
+all = [
+    { name = "fastmcp" },
+    { name = "mypy" },
+    { name = "nltk" },
+    { name = "pre-commit" },
+    { name = "pydantic-ai" },
+    { name = "pydriller" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
 dev = [
     { name = "mypy" },
     { name = "pre-commit" },
@@ -140,11 +150,20 @@ text-processing = [
     { name = "nltk" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=23.0.0" },
+    { name = "ca-bhfuil", extras = ["dev", "ai", "advanced-analysis", "text-processing"], marker = "extra == 'all'" },
     { name = "diskcache", specifier = ">=5.6.0" },
-    { name = "fastmcp", specifier = ">=0.1.0" },
     { name = "fastmcp", marker = "extra == 'ai'", specifier = ">=0.1.0" },
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "loguru", specifier = ">=0.7.0" },
@@ -152,7 +171,7 @@ requires-dist = [
     { name = "nltk", marker = "extra == 'text-processing'", specifier = ">=3.8.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.4.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.0" },
-    { name = "pydantic-ai", specifier = ">=0.0.1" },
+    { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-ai", marker = "extra == 'ai'", specifier = ">=0.0.1" },
     { name = "pydantic-settings", extras = ["yaml"], specifier = ">=2.0.0" },
     { name = "pydriller", marker = "extra == 'advanced-analysis'", specifier = ">=2.5.0" },
@@ -164,7 +183,16 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "typer", extras = ["all"], specifier = ">=0.9.0" },
 ]
-provides-extras = ["dev", "ai", "advanced-analysis", "text-processing"]
+provides-extras = ["dev", "ai", "all", "advanced-analysis", "text-processing"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.5.0" },
+    { name = "pre-commit", specifier = ">=3.4.0" },
+    { name = "pytest", specifier = ">=7.4.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "ruff", specifier = ">=0.1.0" },
+]
 
 [[package]]
 name = "cachetools"

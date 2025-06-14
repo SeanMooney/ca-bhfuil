@@ -3,7 +3,7 @@
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -13,7 +13,7 @@ from ca_bhfuil.core.config import get_settings
 class DatabaseManager:
     """SQLite database manager for ca-bhfuil."""
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         """Initialize database manager.
 
         Args:
@@ -138,7 +138,7 @@ class DatabaseManager:
             conn.commit()
             return cursor.lastrowid
 
-    def get_repository(self, path: str) -> Optional[dict[str, Any]]:
+    def get_repository(self, path: str) -> dict[str, Any] | None:
         """Get repository by path.
 
         Args:
@@ -216,8 +216,8 @@ class DatabaseManager:
     def find_commits(
         self,
         repository_id: int,
-        sha_pattern: Optional[str] = None,
-        message_pattern: Optional[str] = None,
+        sha_pattern: str | None = None,
+        message_pattern: str | None = None,
         limit: int = 100
     ) -> list[dict[str, Any]]:
         """Find commits matching criteria.
@@ -283,7 +283,7 @@ class DatabaseManager:
 
 
 # Global database manager instance
-_db_manager: Optional[DatabaseManager] = None
+_db_manager: DatabaseManager | None = None
 
 
 def get_database_manager() -> DatabaseManager:
