@@ -1,14 +1,23 @@
-# PLANNING.md - Ca-Bhfuil Restructure Implementation Plan
+# PLANNING.md - Ca-Bhfuil Restructure Implementation Plan (Updated)
 
 ## Overview
 
-This document provides a detailed implementation plan for restructuring ca-bhfuil from a LangChain/LangGraph proof-of-concept to a production-ready tool using PydanticAI and FastMCP. This plan is designed to be executed by Claude Code or similar AI coding assistants.
+This document provides a detailed implementation plan for restructuring ca-bhfuil from a LangChain/LangGraph proof-of-concept to a production-ready tool using PydanticAI and FastMCP. This plan reflects the refined tech stack decisions optimized for large repositories, single-developer workflow, and flexible deployment.
 
 ## Project Context
 
 **Current State**: ca-bhfuil is a proof-of-concept using LangChain and LangGraph for git repository analysis
 **Target State**: Production-ready tool using PydanticAI agents and FastMCP for standardized LLM integration
-**Goal**: Create a comprehensive git analysis tool that can locate patches, commits, and provide intelligent summaries
+**Optimization Focus**: Large repositories (10k+ commits), minimal operational overhead, single-developer friendly
+
+## Refined Technical Decisions
+
+### Core Changes from Initial Plan:
+- **Git Library**: pygit2 instead of GitPython for large repository performance
+- **Issue Tracker Strategy**: Lazy loading with link rendering, fetch only when requested
+- **Caching**: Aggressive disk-based caching for both git operations and API responses
+- **Development Workflow**: Single-developer optimized with comprehensive pre-commit hooks
+- **Deployment**: Local CLI + remotely deployable MCP server with persistent storage
 
 ## Implementation Tasks
 
@@ -18,44 +27,94 @@ This document provides a detailed implementation plan for restructuring ca-bhfui
 
 #### Subtasks:
 1. **Create new project structure** using modern Python best practices
-2. **Initialize uv project** with proper configuration
-3. **Set up development tooling** (ruff, mypy, pytest, pre-commit)
-4. **Create GitHub workflows** for CI/CD
+2. **Initialize uv project** with refined dependency configuration
+3. **Set up single-developer tooling** (ruff, mypy, pytest, pre-commit)
+4. **Create deployment configurations** for local and remote MCP server
 
 #### Files to Create:
 ```
-├── pyproject.toml              # Main project configuration
+├── pyproject.toml              # Updated with pygit2 and refined deps
 ├── .gitignore                  # Git ignore patterns
 ├── .dockerignore               # Docker ignore patterns
 ├── README.md                   # Updated project documentation
 ├── LICENSE                     # MIT license
-├── Dockerfile                  # Container configuration
-├── .github/workflows/
-│   ├── ci.yml                  # Testing and linting
-│   ├── release.yml             # PyPI publishing
-│   └── docker.yml              # Container builds
-├── .pre-commit-config.yaml     # Pre-commit hooks
+├── Dockerfile                  # Multi-stage build for MCP server
+├── docker-compose.yml          # Local development and remote deployment
+├── .pre-commit-config.yaml     # Comprehensive but simple pre-commit hooks
+├── ca-bhfuil.yaml             # Default configuration with caching settings
 └── scripts/
     ├── setup_dev.sh            # Development setup script
-    └── build_container.sh      # Container build script
+    ├── build_container.sh      # Container build script
+    └── deploy_mcp.sh           # MCP server deployment script
 ```
 
 #### Key Requirements:
 - Use `src/` layout for package structure
-- Configure uv for dependency management
-- Set up ruff for linting and formatting
-- Configure mypy for type checking
-- Set up pytest with async support
+- Configure uv with refined dependencies (pygit2, diskcache)
+- Set up ruff for all-in-one linting and formatting
+- Configure mypy for strict type checking
+- Set up pytest with async support and caching tests
 
-### TASK 2: Core Data Models
+#### Updated Dependencies Configuration:
+```toml
+[project]
+dependencies = [
+    # Core AI/Agent Framework
+    "pydantic-ai>=0.1.0",
+    "fastmcp>=2.0.0",
+    
+    # High-Performance Git Analysis
+    "pygit2>=1.13.0",
+    
+    # HTTP/API with caching
+    "httpx>=0.27.0",
+    "diskcache>=5.6.0",
+    
+    # Configuration
+    "pydantic-settings[yaml]>=2.9.1",
+    "python-dotenv>=1.0.0",
+    
+    # Terminal Interface
+    "typer[all]>=0.12.0",
+    "prompt-toolkit>=3.0.51",
+    
+    # Logging
+    "loguru>=0.7.2",
+    
+    # Utilities
+    "aiofiles>=24.0.0",
+    "regex>=2023.0.0",
+]
+
+[project.optional-dependencies]
+advanced-analysis = [
+    "pydriller>=2.6",
+]
+
+text-processing = [
+    "nltk>=3.9",
+]
+
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0", 
+    "pytest-cov>=4.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.0.0",
+]
+```
+
+### TASK 2: Core Data Models and Configuration
 **Priority**: HIGH
 **Estimated Effort**: 2-3 hours
 
 #### Subtasks:
 1. **Define Pydantic models** for all git-related data structures
-2. **Create configuration models** for application settings
-3. **Implement validation logic** for git data
+2. **Create unified configuration model** with caching and performance settings
+3. **Implement validation logic** for git data and configuration
 4. **Add custom exceptions** for error handling
+5. **Create caching wrapper** for consistent cache usage
 
 #### Files to Create:
 ```
@@ -63,317 +122,92 @@ src/ca_bhfuil/
 ├── __init__.py
 ├── core/
 │   ├── __init__.py
-│   ├── models.py               # Pydantic data models
-│   ├── config.py               # Configuration management
+│   ├── models.py               # All Pydantic data models
+│   ├── config.py               # Unified configuration management
+│   ├── cache.py                # Caching wrapper for git and API data
 │   └── exceptions.py           # Custom exceptions
 ```
 
 #### Required Models:
-- `CommitInfo`: Git commit data with validation
-- `BranchInfo`: Branch metadata and commit lists
-- `TagInfo`: Git tag information
-- `SearchResult`: Search operation results
-- `CommitAnalysis`: AI analysis results
-- `RepositoryConfig`: Repository configuration
-- `AppConfig`: Application-wide settings
+```python
+# models.py structure
+@dataclass
+class CommitInfo:
+    sha: str
+    message: str
+    author: str
+    date: datetime
+    parents: List[str]
+    files_changed: List[str]
+    issue_links: List[str] = field(default_factory=list)  # Rendered links
 
-### TASK 3: Git Operations Layer
+@dataclass 
+class SearchResult:
+    commits: List[CommitInfo]
+    total_found: int
+    search_query: str
+    execution_time: float
+    cached: bool
+
+@dataclass
+class IssueReference:
+    id: str
+    tracker: str
+    url: str
+    fetched: bool = False
+    content: Optional[Dict] = None  # Only populated when fetched
+
+# config.py structure
+class GitConfig(BaseModel):
+    cache_enabled: bool = True
+    cache_ttl: int = 3600
+    max_commits_per_search: int = 10000
+    
+class TrackerConfig(BaseModel):
+    lazy_fetch: bool = True
+    cache_ttl: int = 86400  # 24 hours
+    jira_url: str = ""
+    github_url: str = "https://github.com"
+    launchpad_url: str = "https://launchpad.net"
+
+class CacheConfig(BaseModel):
+    directory: Path = Path.home() / ".cache" / "ca-bhfuil"
+    max_size_mb: int = 1000
+    git_ttl: int = 3600
+    api_ttl: int = 86400
+```
+
+### TASK 3: High-Performance Git Operations Layer
 **Priority**: HIGH
 **Estimated Effort**: 3-4 hours
 
 #### Subtasks:
-1. **Implement GitRepository class** for git operations
-2. **Create search functionality** for commits, change IDs, and patches
-3. **Add branch and tag analysis** capabilities
-4. **Implement async git operations** for performance
+1. **Implement GitRepository class** using pygit2 for performance
+2. **Create cached search functionality** for commits, change IDs, and patches
+3. **Add branch and tag analysis** with caching
+4. **Implement async git operations** with proper error handling
+5. **Add issue ID extraction** with regex patterns
 
 #### Files to Create:
 ```
 src/ca_bhfuil/git/
 ├── __init__.py
-├── repository.py               # Main GitRepository class
-├── analysis.py                 # Git analysis logic
-├── search.py                   # Search implementations
+├── repository.py               # Main GitRepository class using pygit2
+├── analysis.py                 # Git analysis logic with caching
+├── search.py                   # Optimized search implementations
+├── patterns.py                 # Issue ID extraction patterns
 └── utils.py                    # Git utilities and helpers
 ```
 
 #### Required Functionality:
-- Search commits by SHA, change ID, title, author
-- Analyze commit impact and relationships
-- Find branches/tags containing specific commits
-- Extract metadata from commit messages
-- Support for Gerrit change IDs and other trackers
-
-### TASK 4: PydanticAI Agents
-**Priority**: HIGH
-**Estimated Effort**: 3-4 hours
-
-#### Subtasks:
-1. **Create search agent** for finding commits and patches
-2. **Implement analysis agent** for commit analysis
-3. **Add summarization agent** for generating reports
-4. **Configure agent tools** with proper typing
-
-#### Files to Create:
-```
-src/ca_bhfuil/core/
-└── agents.py                   # PydanticAI agent definitions
-```
-
-#### Required Agents:
-- `search_agent`: Find commits by various criteria
-- `analysis_agent`: Analyze commit purpose and impact
-- `summary_agent`: Generate human-readable summaries
-- Agent tools for git operations
-- Dependency injection for repository access
-
-### TASK 5: FastMCP Server Implementation
-**Priority**: HIGH
-**Estimated Effort**: 2-3 hours
-
-#### Subtasks:
-1. **Create MCP server** with FastMCP framework
-2. **Implement MCP tools** for git operations
-3. **Add MCP resources** for repository metadata
-4. **Define MCP prompts** for common analysis patterns
-
-#### Files to Create:
-```
-src/ca_bhfuil/mcp/
-├── __init__.py
-├── server.py                   # Main FastMCP server
-├── tools.py                    # MCP tools for git operations
-├── resources.py                # MCP resources for data
-└── prompts.py                  # MCP prompts and templates
-```
-
-#### Required MCP Components:
-- Tools: `find_commit`, `analyze_commit`, `search_branches`
-- Resources: `repo_info`, `branch_list`, `tag_list`
-- Prompts: `analyze_patch`, `find_related`, `summarize_changes`
-
-### TASK 6: CLI Interface
-**Priority**: MEDIUM
-**Estimated Effort**: 2-3 hours
-
-#### Subtasks:
-1. **Create CLI application** using Typer
-2. **Implement rich output** with tables and formatting
-3. **Add multiple output formats** (JSON, table, markdown)
-4. **Configure command structure** with subcommands
-
-#### Files to Create:
-```
-src/ca_bhfuil/
-├── __main__.py                 # CLI entry point
-└── cli/
-    ├── __init__.py
-    ├── main.py                 # Main CLI application
-    ├── commands.py             # CLI command implementations
-    └── utils.py                # CLI utilities
-```
-
-#### Required Commands:
-- `search`: Find commits by various criteria
-- `analyze`: Analyze specific commits
-- `branches`: List and analyze branches
-- `tags`: List and analyze tags
-- `summary`: Generate repository summaries
-
-### TASK 7: Standalone Interface
-**Priority**: LOW
-**Estimated Effort**: 1-2 hours
-
-#### Subtasks:
-1. **Create simple prompt loop** for standalone usage
-2. **Implement basic conversation flow** with agents
-3. **Add help and command suggestions**
-
-#### Files to Create:
-```
-src/ca_bhfuil/standalone/
-├── __init__.py
-├── loop.py                     # Simple prompt loop
-└── interface.py                # Standalone interface
-```
-
-### TASK 8: Testing Infrastructure
-**Priority**: MEDIUM
-**Estimated Effort**: 3-4 hours
-
-#### Subtasks:
-1. **Set up pytest configuration** with async support
-2. **Create test fixtures** for git repositories
-3. **Implement unit tests** for all modules
-4. **Add integration tests** for agent workflows
-
-#### Files to Create:
-```
-tests/
-├── __init__.py
-├── conftest.py                 # pytest configuration
-├── fixtures/                   # Test data and fixtures
-├── test_core/
-│   ├── test_agents.py
-│   ├── test_models.py
-│   └── test_config.py
-├── test_git/
-│   ├── test_repository.py
-│   ├── test_analysis.py
-│   └── test_search.py
-├── test_mcp/
-│   ├── test_server.py
-│   ├── test_tools.py
-│   └── test_resources.py
-└── test_cli/
-    ├── test_main.py
-    └── test_commands.py
-```
-
-### TASK 9: Documentation and Examples
-**Priority**: MEDIUM
-**Estimated Effort**: 2-3 hours
-
-#### Subtasks:
-1. **Create comprehensive README** with usage examples
-2. **Write API documentation** for all modules
-3. **Add usage examples** for different scenarios
-4. **Create MCP integration guide**
-
-#### Files to Create:
-```
-docs/
-├── index.md                    # Main documentation
-├── installation.md             # Installation guide
-├── usage.md                    # Usage examples
-├── mcp-integration.md          # MCP setup guide
-└── api.md                      # API reference
-
-examples/
-├── basic_usage.py              # Basic CLI usage
-├── mcp_server_example.py       # MCP server setup
-├── claude_desktop_config.json  # Claude Desktop config
-└── advanced_analysis.py        # Advanced use cases
-```
-
-### TASK 10: Container and Deployment
-**Priority**: LOW
-**Estimated Effort**: 1-2 hours
-
-#### Subtasks:
-1. **Create Dockerfile** for containerized deployment
-2. **Set up GitHub Actions** for automated builds
-3. **Configure PyPI publishing** workflow
-
-## Implementation Order
-
-### Phase 1: Foundation (Tasks 1-3)
-Execute in order: Project Setup → Data Models → Git Operations
-**Timeline**: 1-2 days
-**Dependencies**: None
-
-### Phase 2: Core Functionality (Tasks 4-5)
-Execute in parallel: PydanticAI Agents + FastMCP Server
-**Timeline**: 1 day
-**Dependencies**: Phase 1 complete
-
-### Phase 3: Interfaces (Tasks 6-7)
-Execute in parallel: CLI + Standalone Interface
-**Timeline**: 1 day
-**Dependencies**: Phase 2 complete
-
-### Phase 4: Quality & Deployment (Tasks 8-10)
-Execute in parallel: Testing + Documentation + Deployment
-**Timeline**: 1-2 days
-**Dependencies**: Phase 3 complete
-
-## Technical Specifications
-
-### Dependencies
-```toml
-# Core dependencies
-pydantic-ai = ">=0.1.0"
-fastmcp = ">=2.0.0"
-typer = {extras = ["all"], version = ">=0.12.0"}
-rich = ">=13.0.0"
-gitpython = ">=3.1.0"
-aiofiles = ">=24.0.0"
-httpx = ">=0.27.0"
-
-# Development dependencies
-pytest = ">=8.0.0"
-pytest-asyncio = ">=0.24.0"
-pytest-cov = ">=4.0.0"
-ruff = ">=0.6.0"
-mypy = ">=1.8.0"
-pre-commit = ">=3.0.0"
-```
-
-### Python Version Support
-- Minimum: Python 3.10
-- Recommended: Python 3.11+
-- Type hints: Full type annotation coverage
-
-### Code Quality Standards
-- **Linting**: Ruff with strict configuration
-- **Type Checking**: mypy with strict mode
-- **Testing**: 90%+ test coverage
-- **Documentation**: Docstrings for all public APIs
-
-## Migration Notes
-
-### From LangChain/LangGraph
-- Replace StateGraph with PydanticAI Agent classes
-- Convert LangChain tools to PydanticAI tools with proper typing
-- Replace memory/state management with dependency injection
-- Migrate prompts to PydanticAI system prompts
-
-### New Features with FastMCP
-- Standardized tool interface for LLM integration
-- Resource-based data access patterns
-- Prompt templates for common operations
-- Easy integration with Claude Desktop and other MCP clients
-
-## Success Criteria
-
-1. **Functional**: All original ca-bhfuil functionality preserved and enhanced
-2. **Performance**: Faster startup and execution vs LangChain version
-3. **Integration**: Successful MCP integration with Claude Desktop
-4. **Quality**: 90%+ test coverage, type safety, proper error handling
-5. **Usability**: Intuitive CLI interface with rich output formatting
-6. **Deployment**: Container packaging and PyPI distribution working
-
-## Risk Mitigation
-
-- **Dependency Issues**: Pin versions and test with multiple Python versions
-- **Migration Complexity**: Implement incrementally with feature parity checks
-- **Performance**: Profile and optimize critical paths
-- **Integration**: Test MCP server with multiple clients
-- **Maintenance**: Comprehensive documentation and examples
-
-## Implementation Notes for Claude Code
-
-1. **Start with Task 1** (Project Structure) - this provides the foundation
-2. **Follow the phased approach** - don't skip to later phases without completing dependencies
-3. **Maintain backward compatibility** during migration where possible
-4. **Test each component** as it's implemented
-5. **Use type hints extensively** - they're critical for PydanticAI
-6. **Follow the existing code patterns** from the original ca-bhfuil where applicable
-7. **Implement async/await properly** - required for PydanticAI and FastMCP
-8. **Keep security in mind** - validate all inputs and handle errors gracefully
-
-## File Generation Priority
-
-### Critical Path Files (implement first):
-1. `pyproject.toml` - Project configuration
-2. `src/ca_bhfuil/core/models.py` - Data models
-3. `src/ca_bhfuil/git/repository.py` - Git operations
-4. `src/ca_bhfuil/core/agents.py` - PydanticAI agents
-5. `src/ca_bhfuil/mcp/server.py` - FastMCP server
-
-### Supporting Files (implement after critical path):
-6. `src/ca_bhfuil/cli/main.py` - CLI interface
-7. `tests/conftest.py` - Test configuration
-8. `README.md` - Documentation
-9. `Dockerfile` - Container setup
-10. `.github/workflows/ci.yml` - CI/CD pipeline
+```python
+# repository.py key methods
+class GitRepository:
+    def __init__(self, path: str, cache: Cache):
+        self.repo = pygit2.Repository(path)
+        self.cache = cache
+    
+    async def search_commits_by_sha(self, sha: str) -> List[CommitInfo]:
+        """Fast SHA search with caching"""
+        
+    async def search_commits_by_message(self, query: str) ->
