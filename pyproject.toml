@@ -79,7 +79,7 @@ Repository = "https://github.com/seandstewart/ca-bhfuil"
 Issues = "https://github.com/seandstewart/ca-bhfuil/issues"
 
 [project.scripts]
-ca-bhfuil = "ca_bhfuil.cli.main:main"
+ca-bhfuil = "ca_bhfuil.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ca_bhfuil"]
