@@ -18,17 +18,20 @@ class CommitInfo(BaseModel):
     committer_email: str = Field(..., description="Committer email")
     committer_date: datetime = Field(..., description="Committer date")
     parents: list[str] = Field(default_factory=list, description="Parent commit SHAs")
-    branches: list[str] = Field(default_factory=list, description="Branches containing this commit")
-    tags: list[str] = Field(default_factory=list, description="Tags pointing to this commit")
+    branches: list[str] = Field(
+        default_factory=list, description="Branches containing this commit"
+    )
+    tags: list[str] = Field(
+        default_factory=list, description="Tags pointing to this commit"
+    )
     files_changed: int | None = Field(None, description="Number of files changed")
     insertions: int | None = Field(None, description="Number of insertions")
     deletions: int | None = Field(None, description="Number of deletions")
 
     class Config:
         """Pydantic model configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def __str__(self) -> str:
         """String representation of commit info."""
