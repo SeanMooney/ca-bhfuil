@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from ca_bhfuil.core.config import get_settings
+from ca_bhfuil.core.config import get_state_dir
 
 
 class DatabaseManager:
@@ -98,11 +98,21 @@ class DatabaseManager:
             """)
 
             # Create indexes for better performance
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_commits_sha ON commits (sha)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_commits_short_sha ON commits (short_sha)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_commits_author_date ON commits (author_date)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_commits_repository_id ON commits (repository_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_branches_name ON branches (name)")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_commits_sha ON commits (sha)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_commits_short_sha ON commits (short_sha)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_commits_author_date ON commits (author_date)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_commits_repository_id ON commits (repository_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_branches_name ON branches (name)"
+            )
 
             conn.commit()
 
@@ -133,7 +143,7 @@ class DatabaseManager:
                 INSERT OR REPLACE INTO repositories (path, name, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
                 """,
-                (path, name)
+                (path, name),
             )
             conn.commit()
             return cursor.lastrowid
@@ -153,7 +163,9 @@ class DatabaseManager:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def update_repository_stats(self, repo_id: int, commit_count: int, branch_count: int) -> None:
+    def update_repository_stats(
+        self, repo_id: int, commit_count: int, branch_count: int
+    ) -> None:
         """Update repository statistics.
 
         Args:
@@ -169,7 +181,7 @@ class DatabaseManager:
                 SET commit_count = ?, branch_count = ?, last_analyzed = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
-                (commit_count, branch_count, repo_id)
+                (commit_count, branch_count, repo_id),
             )
             conn.commit()
 
@@ -208,7 +220,7 @@ class DatabaseManager:
                     commit_data.get("files_changed"),
                     commit_data.get("insertions"),
                     commit_data.get("deletions"),
-                )
+                ),
             )
             conn.commit()
             return cursor.lastrowid
@@ -218,7 +230,7 @@ class DatabaseManager:
         repository_id: int,
         sha_pattern: str | None = None,
         message_pattern: str | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Find commits matching criteria.
 
@@ -247,7 +259,7 @@ class DatabaseManager:
 
             query = f"""
                 SELECT * FROM commits
-                WHERE {' AND '.join(where_clauses)}
+                WHERE {" AND ".join(where_clauses)}
                 ORDER BY author_date DESC
                 LIMIT ?
             """

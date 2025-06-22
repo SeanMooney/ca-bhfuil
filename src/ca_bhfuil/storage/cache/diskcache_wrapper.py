@@ -8,7 +8,7 @@ from typing import Any
 import diskcache as dc
 from loguru import logger
 
-from ca_bhfuil.core.config import get_settings
+from ca_bhfuil.core.config import get_cache_dir
 
 
 class CacheManager:
@@ -52,12 +52,7 @@ class CacheManager:
             logger.warning(f"Cache get error for key '{key}': {e}")
             return default
 
-    def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: int | timedelta | None = None
-    ) -> bool:
+    def set(self, key: str, value: Any, ttl: int | timedelta | None = None) -> bool:
         """Set value in cache.
 
         Args:

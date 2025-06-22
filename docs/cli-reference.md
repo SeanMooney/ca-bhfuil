@@ -1,0 +1,473 @@
+# CLI Reference
+
+This document provides a comprehensive reference for the ca-bhfuil command-line interface.
+
+## Overview
+
+Ca-bhfuil provides a command-line interface for managing git repository analysis configuration and performing commit searches across stable branches.
+
+```bash
+ca-bhfuil [OPTIONS] COMMAND [ARGS]...
+```
+
+## Global Options
+
+- `--version`: Show version and exit
+- `--help`: Show help message and exit
+
+## Commands
+
+### config
+
+Configuration management commands for ca-bhfuil.
+
+```bash
+ca-bhfuil config [OPTIONS] COMMAND [ARGS]...
+```
+
+#### config init
+
+Initialize default configuration files.
+
+```bash
+ca-bhfuil config init [OPTIONS]
+```
+
+**Options:**
+- `--force`, `-f`: Overwrite existing configuration files
+
+**Description:**
+Creates the default configuration files in the XDG-compliant directory structure:
+- `~/.config/ca-bhfuil/repos.yaml`: Repository configuration
+- `~/.config/ca-bhfuil/global.yaml`: Global settings
+- `~/.config/ca-bhfuil/auth.yaml`: Authentication configuration (secure permissions)
+
+**Examples:**
+```bash
+# Initialize default configuration
+ca-bhfuil config init
+
+# Force overwrite existing configuration
+ca-bhfuil config init --force
+```
+
+#### config validate
+
+Validate current configuration files.
+
+```bash
+ca-bhfuil config validate
+```
+
+**Description:**
+Validates all configuration files for:
+- YAML syntax errors
+- Schema validation
+- Duplicate repository names or URLs
+- Invalid authentication references
+- Missing required fields
+
+**Examples:**
+```bash
+# Validate current configuration
+ca-bhfuil config validate
+```
+
+#### config status
+
+Show configuration system status.
+
+```bash
+ca-bhfuil config status
+```
+
+**Description:**
+Displays comprehensive status information including:
+- XDG directory paths and existence
+- Configuration file status
+- Configured repositories summary
+
+**Examples:**
+```bash
+# Show configuration status
+ca-bhfuil config status
+```
+
+#### config show
+
+Display configuration file contents.
+
+```bash
+ca-bhfuil config show [OPTIONS]
+```
+
+**Options:**
+- `--repos`: Show repos configuration (`repos.yaml`)
+- `--global`: Show global configuration (`global.yaml`)
+- `--auth`: Show auth configuration (`auth.yaml`)
+- `--all`: Show all configuration files
+- `--format`, `-f`: Output format: `yaml` (default) or `json`
+
+**Description:**
+Displays configuration file contents with syntax highlighting. Multiple options can be combined to show multiple files. Defaults to showing global configuration if no options are specified.
+
+**Examples:**
+```bash
+# Show global configuration (default)
+ca-bhfuil config show
+ca-bhfuil config show --global
+
+# Show specific configuration files
+ca-bhfuil config show --repos
+ca-bhfuil config show --auth
+
+# Show multiple configuration files
+ca-bhfuil config show --repos --global
+ca-bhfuil config show --repos --auth
+
+# Show all configuration files
+ca-bhfuil config show --all
+
+# Show configuration in JSON format
+ca-bhfuil config show --global --format json
+ca-bhfuil config show --all --format json
+
+# Combine multiple files with JSON format
+ca-bhfuil config show --repos --auth --format json
+```
+
+### search
+
+Search for commits in repositories.
+
+```bash
+ca-bhfuil search [OPTIONS] QUERY
+```
+
+**Arguments:**
+- `QUERY`: Search query (SHA, partial SHA, or commit message pattern)
+
+**Options:**
+- `--repo`, `-r`: Path to git repository (defaults to current directory)
+- `--verbose`, `-v`: Enable verbose output
+
+**Description:**
+Search for commits using various patterns. Currently a placeholder implementation.
+
+**Examples:**
+```bash
+# Search in current directory
+ca-bhfuil search abc123
+
+# Search in specific repository
+ca-bhfuil search --repo /path/to/repo "fix bug"
+
+# Verbose search
+ca-bhfuil search --verbose abc123
+```
+
+### completion
+
+Install shell completion for ca-bhfuil.
+
+```bash
+ca-bhfuil completion [SHELL]
+```
+
+**Arguments:**
+- `SHELL`: Shell type (default: bash). Supported: bash, zsh, fish
+
+**Description:**
+Installs shell completion scripts that provide intelligent tab completion for ca-bhfuil commands, options, and file paths.
+
+**Examples:**
+```bash
+# Install bash completion (default)
+ca-bhfuil completion
+ca-bhfuil completion bash
+
+# Install for other shells (when supported)
+ca-bhfuil completion zsh
+ca-bhfuil completion fish
+```
+
+### status
+
+Show repository analysis status.
+
+```bash
+ca-bhfuil status [OPTIONS]
+```
+
+**Options:**
+- `--repo`, `-r`: Path to git repository (defaults to current directory)
+- `--verbose`, `-v`: Enable verbose output
+
+**Description:**
+Displays system status including:
+- XDG directory structure
+- Configuration loading status
+- Repository statistics
+
+**Examples:**
+```bash
+# Show system status
+ca-bhfuil status
+
+# Show status for specific repository
+ca-bhfuil status --repo /path/to/repo
+
+# Verbose status output
+ca-bhfuil status --verbose
+```
+
+## Configuration Files
+
+### repos.yaml
+
+Repository configuration file containing repository definitions and settings.
+
+**Location:** `~/.config/ca-bhfuil/repos.yaml`
+
+**Schema:**
+```yaml
+version: "1.0"
+repos:
+  - name: "repository-name"
+    source:
+      url: "git@github.com:owner/repo.git"
+      type: "github"
+    auth_key: "github-default"
+    branches:
+      patterns: ["main", "stable/*"]
+      exclude_patterns: ["stable/old-*"]
+      max_branches: 50
+    sync:
+      strategy: "fetch_all"
+      interval: "6h"
+      prune_deleted: true
+    storage:
+      type: "bare"
+      max_size: "5GB"
+      retention_days: 365
+
+settings:
+  max_total_size: "50GB"
+  default_sync_interval: "6h"
+  clone_timeout: "30m"
+  parallel_clones: 3
+```
+
+### global.yaml
+
+Global system configuration and settings.
+
+**Location:** `~/.config/ca-bhfuil/global.yaml`
+
+**Schema:**
+```yaml
+version: "1.0"
+storage:
+  max_total_size: "100GB"
+  max_cache_size: "80GB"
+  max_state_size: "20GB"
+  cleanup_policy: "lru"
+  cleanup_threshold: 0.9
+
+sync:
+  max_parallel_jobs: 3
+  default_timeout: "30m"
+  retry_attempts: 3
+  retry_backoff: "exponential"
+
+performance:
+  git_clone_bare: true
+  pygit2_cache_size: "100MB"
+```
+
+### auth.yaml
+
+Authentication configuration (secure file with 600 permissions).
+
+**Location:** `~/.config/ca-bhfuil/auth.yaml`
+
+**Schema:**
+```yaml
+version: "1.0"
+defaults:
+  github:
+    type: "ssh_key"
+    ssh_key_path: "~/.ssh/id_ed25519"
+  gitlab:
+    type: "ssh_key"
+    ssh_key_path: "~/.ssh/id_ed25519"
+
+auth_methods:
+  github-default:
+    type: "ssh_key"
+    ssh_key_path: "~/.ssh/id_ed25519"
+  github-token:
+    type: "token"
+    token_env: "GITHUB_TOKEN"
+    username_env: "GITHUB_USERNAME"
+```
+
+## Directory Structure
+
+Ca-bhfuil follows the XDG Base Directory Specification:
+
+```
+~/.config/ca-bhfuil/          # Configuration (XDG_CONFIG_HOME)
+├── repos.yaml               # Repository definitions
+├── global.yaml              # Global settings  
+└── auth.yaml                 # Authentication (git-ignored)
+
+~/.local/state/ca-bhfuil/     # Persistent state (XDG_STATE_HOME)
+└── {host}/{org}/{repo}/      # Per-repository metadata
+    ├── analysis.db           # Commit analysis
+    ├── sync-log.db          # Sync history
+    └── .locks/              # Operation locks
+
+~/.cache/ca-bhfuil/          # Cache data (XDG_CACHE_HOME)
+└── repos/{host}/{org}/{repo}/ # Git repositories
+```
+
+## Environment Variables
+
+- `XDG_CONFIG_HOME`: Override config directory (default: `~/.config`)
+- `XDG_STATE_HOME`: Override state directory (default: `~/.local/state`)
+- `XDG_CACHE_HOME`: Override cache directory (default: `~/.cache`)
+- `CA_BHFUIL_LOG_LEVEL`: Set log level (DEBUG, INFO, WARNING, ERROR)
+
+## Exit Codes
+
+- `0`: Success
+- `1`: General error (validation failure, missing files, etc.)
+
+## Examples and Workflows
+
+### Initial Setup
+
+```bash
+# Initialize configuration
+ca-bhfuil config init
+
+# Check status
+ca-bhfuil config status
+
+# Validate configuration
+ca-bhfuil config validate
+
+# View configuration
+ca-bhfuil config show --all
+```
+
+### Configuration Management
+
+```bash
+# View current repositories
+ca-bhfuil config show --repos
+
+# View global settings
+ca-bhfuil config show --global
+
+# View authentication settings
+ca-bhfuil config show --auth
+
+# Export configuration as JSON
+ca-bhfuil config show --all --format json > config-backup.json
+
+# Compare configurations
+ca-bhfuil config show --repos --auth
+```
+
+### Development Workflow
+
+```bash
+# Check system status
+ca-bhfuil status
+
+# Validate configuration after changes
+ca-bhfuil config validate
+
+# Reinitialize if needed
+ca-bhfuil config init --force
+
+# Search for commits (placeholder)
+ca-bhfuil search abc123 --verbose
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Configuration not found:**
+```bash
+# Initialize default configuration
+ca-bhfuil config init
+```
+
+**Validation errors:**
+```bash
+# Check specific validation issues
+ca-bhfuil config validate
+
+# View current configuration
+ca-bhfuil config show --all
+```
+
+**Permission issues:**
+```bash
+# Check file permissions
+ls -la ~/.config/ca-bhfuil/
+
+# Reinitialize with proper permissions
+ca-bhfuil config init --force
+```
+
+**XDG directory issues:**
+```bash
+# Check directory status
+ca-bhfuil config status
+
+# Use custom directories
+export XDG_CONFIG_HOME=/custom/config/path
+ca-bhfuil config init
+```
+
+## Bash Completion
+
+Bash completion is available for all commands and options, providing smart completion for options, file paths, and format values.
+
+### Installation
+
+Install bash completion using the built-in command:
+
+```bash
+# Install bash completion
+ca-bhfuil completion bash
+
+# The completion script will be installed to ~/.bash_completion.d/ca-bhfuil
+# Source your .bashrc or start a new shell to enable completion
+```
+
+### Manual Installation
+
+Alternatively, you can manually source the completion script:
+
+```bash
+# Generate completion script
+python -m ca_bhfuil.cli.completion
+
+# Source the generated script
+source scripts/ca-bhfuil-completion.bash
+```
+
+### Features
+
+The bash completion provides:
+- Command and subcommand completion
+- Option flag completion (`--repos`, `--global`, `--auth`, etc.)
+- Format completion for `--format` option (`yaml`, `json`)
+- Directory path completion for `--repo` option
+- Smart completion that respects mutually exclusive options
