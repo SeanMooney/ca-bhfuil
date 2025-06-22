@@ -175,9 +175,29 @@ def is_valid_url(url: str) -> bool:
     Returns:
         True if URL appears to be a valid git repository URL
     """
+    if not url or not isinstance(url, str):
+        return False
+    
     try:
+        # First check if it can be parsed as a URL
         url_to_path(url)
-        return True
+        
+        # Additional checks for git-like URLs
+        if url.startswith("git@"):
+            # SSH format should have colon after host
+            return ":" in url and "/" in url
+        elif url.startswith(("http://", "https://")):
+            # HTTP/HTTPS should have a path component
+            parsed = urlparse(url)
+            path = parsed.path.strip("/")
+            # Should have at least host/repo format or end with .git
+            return (
+                "/" in path or 
+                path.endswith(".git") or
+                url.endswith(".git")
+            )
+        
+        return False
     except ValueError:
         return False
 
