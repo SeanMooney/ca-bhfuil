@@ -19,8 +19,8 @@ class DatabaseManager:
         Args:
             db_path: Optional database path override
         """
-        settings = config.get_settings()
-        self.db_path = db_path or (settings.cache.directory / "ca-bhfuil.db")
+        cache_dir = config.get_cache_dir()
+        self.db_path = db_path or (cache_dir / "ca-bhfuil.db")
 
         # Ensure database directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,7 +117,7 @@ class DatabaseManager:
             conn.commit()
 
     @contextlib.contextmanager
-    def get_connection(self):
+    def get_connection(self) -> typing.Iterator[sqlite3.Connection]:
         """Get database connection context manager."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row  # Enable column access by name
@@ -146,7 +146,7 @@ class DatabaseManager:
                 (path, name),
             )
             conn.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def get_repository(self, path: str) -> dict[str, typing.Any] | None:
         """Get repository by path.
@@ -223,7 +223,7 @@ class DatabaseManager:
                 ),
             )
             conn.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def find_commits(
         self,
@@ -247,7 +247,7 @@ class DatabaseManager:
             cursor = conn.cursor()
 
             where_clauses = ["repository_id = ?"]
-            params = [repository_id]
+            params: list[typing.Any] = [repository_id]
 
             if sha_pattern:
                 where_clauses.append("(sha LIKE ? OR short_sha LIKE ?)")
