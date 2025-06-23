@@ -1,9 +1,9 @@
 # Ca-Bhfuil AI Code Style Guide
 
 > **Condensed style guide for AI assistants working on Ca-Bhfuil**
-> 
+>
 > **Last Updated**: 2025-01-23 (Sync with docs/code-style.md - added explicit import preference)
-> 
+>
 > **CRITICAL**: This file must stay synchronized with `docs/code-style.md`. When the full guide changes, update this AI-optimized version immediately.
 
 ## Core Rules
@@ -44,13 +44,13 @@ Use Google style with sections as needed:
 ```python
 def function_name(param: type) -> return_type:
     """One-line summary in imperative mood.
-    
+
     Args:
         param: Parameter description.
-        
+
     Returns:
         Description of return value.
-        
+
     Raises:
         ExceptionType: When this exception is raised.
     """
@@ -83,7 +83,7 @@ except:
 ```python
 class CaBhfuilError(Exception):
     """Base exception."""
-    
+
 class ConfigurationError(CaBhfuilError):
     """Config errors."""
 ```
@@ -135,16 +135,16 @@ def read_config_file(path: pathlib.Path) -> dict[str, Any]:
 ```python
 class TestFeatureName:
     """Test class for feature."""
-    
+
     @pytest.fixture
     def setup_data(self):
         """Provide test data."""
         return create_test_data()
-    
+
     def test_success_case(self, setup_data):
         """Test successful operation."""
         # Test implementation
-        
+
     def test_error_case(self, setup_data):
         """Test error handling."""
         with pytest.raises(SpecificError, match="expected message"):
@@ -223,7 +223,7 @@ class ConfigClass:
     """Configuration with validation."""
     required_field: str
     optional_field: int = 100
-    
+
     @property
     def computed_field(self) -> str:
         """Computed property."""
@@ -238,7 +238,7 @@ class ProgressInfo:
     completed: int
     total: int
     current_item: str | None = None
-    
+
     @property
     def percentage(self) -> float:
         """Progress as percentage."""
@@ -277,8 +277,8 @@ class ProcessingOptions:
     cache_size: int = 1000
     retry_count: int = 3
     timeout: int = 30
-    
-def function(data: str, options: ProcessingOptions | None = None): 
+
+def function(data: str, options: ProcessingOptions | None = None):
     if options is None:
         options = ProcessingOptions()
 

@@ -7,16 +7,16 @@ _ca_bhfuil_completion() {
 
     # Main commands
     local commands="config search status"
-    
+
     # Config subcommands
     local config_commands="init validate status show"
-    
+
     # Config show options
     local config_show_options="--repos --global --auth --all --format"
-    
+
     # Format options
     local format_options="yaml json"
-    
+
     # Global options
     local global_options="--version --help"
 

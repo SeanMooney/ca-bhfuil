@@ -295,7 +295,7 @@ def command_name(
     common_option: str = typer.Option("default", "--option", "-o", help="Description"),
 ) -> None:
     """Brief command description.
-    
+
     Longer description with examples and context.
     """
     try:

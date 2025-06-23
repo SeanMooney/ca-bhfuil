@@ -173,13 +173,13 @@ ca-bhfuil/
 
 **Priority 1: Configuration Foundation**
 ```
-Implement XDG-compliant configuration management system with URL-to-path 
+Implement XDG-compliant configuration management system with URL-to-path
 utilities and authentication handling as the foundation for all other functionality.
 ```
 
 **Priority 2: Git Operations Core**  
 ```
-Implement repository registry and basic git operations using pygit2 for 
+Implement repository registry and basic git operations using pygit2 for
 repository detection, commit lookup, and synchronization.
 ```
 

@@ -110,7 +110,7 @@ https://gitlab.com/fdroid/fdroidserver.git → repos/gitlab.com/fdroid/fdroidser
 ```bash
 # Example: Custom XDG paths
 export XDG_CONFIG_HOME="/opt/configs"
-export XDG_STATE_HOME="/var/lib/ca-bhfuil" 
+export XDG_STATE_HOME="/var/lib/ca-bhfuil"
 export XDG_CACHE_HOME="/tmp/cache"
 
 # Ca-Bhfuil will automatically use:
@@ -130,7 +130,7 @@ settings:
   # Storage follows XDG Base Directory Specification
   cache_directory: "~/.cache/ca-bhfuil"       # Git repositories
   state_directory: "~/.local/state/ca-bhfuil" # Persistent metadata
-  
+
   # Resource limits
   max_total_size: "50GB"
   default_sync_interval: "6h"
@@ -142,7 +142,7 @@ repositories:
     source:
       url: "git@github.com:torvalds/linux.git"  # Prefer SSH over HTTPS
       type: "github"  # github, gitlab, generic
-    
+
     remotes:
       - name: "stable"
         url: "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
@@ -150,7 +150,7 @@ repositories:
       - name: "security"  
         url: "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
         fetch_refs: ["refs/heads/master"]
-    
+
     branches:
       patterns:
         - "master"                    # Exact branch name
@@ -158,49 +158,49 @@ repositories:
         - "stable/*"                  # Stable branches
         - "!linux-2.6.*"             # Exclusion pattern
       max_branches: 50               # Limit for performance
-      
+
     sync:
       strategy: "fetch_all"          # fetch_all, fetch_recent, manual
       interval: "4h"                 # Override global default
       prune_deleted: true            # Remove deleted remote branches
-      
+
     storage:
       type: "bare"                   # bare, full (bare for analysis only)
       max_size: "5GB"                # Per-repository limit
       retention_days: 365            # Keep sync history
-      
+
   - name: "django"
     source:
       url: "git@github.com:django/django.git"  # SSH preferred
       type: "github"
-      
+
     branches:
       patterns:
         - "main"
         - "stable/*"
         - "security/*"
-      
+
     sync:
       strategy: "fetch_recent"
       recent_days: 90                # Only sync recent commits
-      
+
   - name: "kubernetes"
     source:
       url: "git@github.com:kubernetes/kubernetes.git"  # SSH preferred
       type: "github"
     auth_key: "github-default"       # Reference to auth.yaml
-        
+
     remotes:
       - name: "release"
         url: "git@github.com:kubernetes/release.git"  # SSH preferred
-        
+
     branches:
       patterns:
         - "master"
         - "release-*"
       exclude_patterns:
         - "release-0.*"              # Exclude very old releases
-        
+
     sync:
       strategy: "manual"             # No automatic sync
 ```
@@ -231,17 +231,17 @@ auth_methods:
     type: "ssh_key"
     ssh_key_path: "~/.ssh/id_ed25519"
     ssh_key_passphrase_env: "SSH_KEY_PASSPHRASE"  # Optional
-    
+
   github-token:
     type: "token"
     token_env: "GITHUB_TOKEN"
     username_env: "GITHUB_USERNAME"
-    
+
   corporate-gitlab:
     type: "ssh_key"
     ssh_key_path: "~/.ssh/id_rsa_corp"
     ssh_key_passphrase_env: "CORP_SSH_PASSPHRASE"
-    
+
   generic-https:
     type: "credential_helper"
     credential_helper: "store"  # or "cache", "system"
@@ -264,41 +264,41 @@ storage:
   config_directory: "~/.config/ca-bhfuil"     # XDG_CONFIG_HOME
   state_directory: "~/.local/state/ca-bhfuil" # XDG_STATE_HOME  
   cache_directory: "~/.cache/ca-bhfuil"       # XDG_CACHE_HOME
-  
+
   # Size limits
   max_total_size: "100GB"
   max_cache_size: "80GB"           # Git repositories (can be re-cloned)
   max_state_size: "20GB"           # Persistent state (important to preserve)
-  
+
   # Cleanup policies
   cleanup_policy: "lru"             # lru, fifo, manual
   cleanup_threshold: 0.9            # Clean when 90% full
-  
+
   # Cross-platform compatibility
   path_max_length: 260              # Windows path length limit
   sanitize_paths: true              # Clean invalid filesystem characters
-  
+
 # Sync Management  
 sync:
   max_parallel_jobs: 3
   default_timeout: "30m"
   retry_attempts: 3
   retry_backoff: "exponential"      # linear, exponential
-  
+
 # Network Configuration
 network:
   max_connections_per_host: 2
   connection_timeout: "30s"
   read_timeout: "5m"
   user_agent: "ca-bhfuil/0.1.0"
-  
+
 # Performance Tuning
 performance:
   git_clone_depth: null            # null for full clone, number for shallow
   git_clone_single_branch: false   # Clone all branches by default  
   git_clone_bare: true             # Bare clones for analysis
   pygit2_cache_size: "100MB"       # LibGit2 object cache
-  
+
 # Authentication
 auth:
   github_token_env: "GITHUB_TOKEN"
@@ -337,28 +337,28 @@ class RepositoryEntry:
 
 class RepositoryRegistry:
     """Manages the registry of all local repositories"""
-    
+
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self._init_database()
-    
+
     def register_repository(self, config: RepositoryConfig) -> RepositoryEntry:
         """Register a new repository in the registry"""
-        
+
     def get_repository(self, url_path: str) -> Optional[RepositoryEntry]:
         """Get repository entry by URL path"""
-        
+
     def get_repository_by_url(self, url: str) -> Optional[RepositoryEntry]:
         """Get repository entry by source URL"""
-        
-    def list_repositories(self, 
+
+    def list_repositories(self,
                          status_filter: Optional[str] = None) -> List[RepositoryEntry]:
         """List all registered repositories with optional status filter"""
-        
-    def update_sync_status(self, url_path: str, status: str, 
+
+    def update_sync_status(self, url_path: str, status: str,
                           last_sync: datetime, stats: Dict[str, Any]):
         """Update repository sync status and statistics"""
-        
+
     def cleanup_orphaned(self) -> List[str]:
         """Find and clean up repositories not in current config"""
 ```
@@ -377,7 +377,7 @@ class RemoteConfig(BaseModel):
     name: str
     url: str
     fetch_refs: List[str] = Field(default_factory=lambda: ["refs/heads/*"])
-    
+
 class AuthMethod(BaseModel):
     """Authentication method for git operations"""
     type: str = "ssh_key"             # ssh_key, token, credential_helper
@@ -391,7 +391,7 @@ class BranchConfig(BaseModel):
     patterns: List[str] = Field(default_factory=lambda: ["*"])
     exclude_patterns: List[str] = Field(default_factory=list)
     max_branches: int = 100
-    
+
     @validator('patterns')
     def validate_patterns(cls, v):
         # Validate glob patterns
@@ -407,12 +407,12 @@ class SyncConfig(BaseModel):
     interval: str = "6h"         # 1h, 30m, 1d format
     recent_days: Optional[int] = None
     prune_deleted: bool = True
-    
+
 class StorageConfig(BaseModel):
     type: str = "bare"           # bare, full
     max_size: Optional[str] = None  # "5GB", "1TB" format
     retention_days: int = 365
-    
+
 class RepositoryConfig(BaseModel):
     name: str
     source: Dict[str, Any]       # URL, type (no auth here)
@@ -421,18 +421,18 @@ class RepositoryConfig(BaseModel):
     sync: SyncConfig = Field(default_factory=SyncConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     auth_key: Optional[str] = None  # Reference to auth.yaml entry
-    
+
     @property
     def url_path(self) -> str:
         """Generate URL-based path from source URL"""
         return url_to_path(self.source['url'])
-    
-    @property 
+
+    @property
     def repo_path(self) -> Path:
         """Get full path to git repository (cache)"""
         from ..config import get_cache_dir
         return get_cache_dir() / "repos" / self.url_path
-        
+
     @property
     def state_path(self) -> Path:
         """Get full path to state directory"""
@@ -446,42 +446,42 @@ class GlobalConfig(BaseModel):
 
 class ConfigManager:
     """Manages repository configuration loading and validation"""
-    
+
     def __init__(self, config_dir: Optional[Path] = None):
         # XDG Base Directory compliant paths
         self.config_dir = config_dir or self._get_config_dir()
         self.repositories_file = self.config_dir / "repositories.yaml"
         self.global_settings_file = self.config_dir / "global-settings.yaml"
         self.auth_file = self.config_dir / "auth.yaml"
-        
+
     def _get_config_dir(self) -> Path:
         """Get XDG_CONFIG_HOME compliant config directory"""
         xdg_config = os.environ.get('XDG_CONFIG_HOME')
         if xdg_config:
             return Path(xdg_config) / "ca-bhfuil"
         return Path.home() / ".config" / "ca-bhfuil"
-    
+
     def load_configuration(self) -> GlobalConfig:
         """Load and validate all configuration files"""
-        
+
     def get_repository_config(self, url_path: str) -> Optional[RepositoryConfig]:
         """Get configuration for specific repository by URL path"""
-        
+
     def get_repository_config_by_url(self, url: str) -> Optional[RepositoryConfig]:
         """Get configuration for specific repository by source URL"""
-        
+
     def validate_configuration(self) -> List[str]:
         """Validate configuration and return list of errors"""
-        
+
     def generate_default_config(self) -> None:
         """Generate default configuration files"""
-        
+
     def load_auth_config(self) -> Dict[str, AuthMethod]:
         """Load authentication configuration from auth.yaml"""
-        
+
     def get_auth_method(self, auth_key: str) -> Optional[AuthMethod]:
         """Get authentication method by key"""
-        
+
     def validate_auth_config(self) -> List[str]:
         """Validate authentication configuration"""
 ```
@@ -497,8 +497,8 @@ import asyncio
 
 class RepositoryManager:
     """High-level repository management operations"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  config_manager: ConfigManager,
                  registry: RepositoryRegistry,
                  storage_root: Path):
@@ -507,32 +507,32 @@ class RepositoryManager:
         self.storage_root = storage_root
         self.cloner = RepositoryCloner(storage_root)
         self.syncer = RepositorySyncer()
-    
+
     async def initialize_repositories(self) -> Dict[str, Any]:
         """Initialize all repositories from configuration"""
-        
-    async def sync_repository(self, url_path: str, 
+
+    async def sync_repository(self, url_path: str,
                              force: bool = False) -> Dict[str, Any]:
         """Sync a specific repository with its remotes"""
-        
+
     async def sync_repository_by_url(self, url: str,
                                     force: bool = False) -> Dict[str, Any]:
         """Sync a specific repository by source URL"""
-        
-    async def sync_all_repositories(self, 
+
+    async def sync_all_repositories(self,
                                    parallel: bool = True) -> Dict[str, List[Any]]:
         """Sync all configured repositories"""
-        
+
     def get_repository_status(self, url_path: str) -> Dict[str, Any]:
         """Get detailed status of a repository"""
-        
+
     def cleanup_repositories(self, dry_run: bool = True) -> Dict[str, Any]:
         """Clean up repositories based on retention policies"""
-        
+
     def add_repository(self, config: RepositoryConfig) -> str:
         """Add a new repository to management"""
-        
-    def remove_repository(self, url_path: str, 
+
+    def remove_repository(self, url_path: str,
                          delete_local: bool = False) -> bool:
         """Remove repository from management"""
 ```
@@ -554,7 +554,7 @@ class CloneProgress:
         self.total_objects = 0
         self.received_objects = 0
         self.received_bytes = 0
-        
+
     def __call__(self, stats):
         self.total_objects = stats.total_objects
         self.received_objects = stats.received_objects
@@ -564,47 +564,47 @@ class CloneProgress:
 
 class RepositoryCloner:
     """Handles repository cloning operations"""
-    
+
     def __init__(self, cache_dir: Optional[Path] = None, state_dir: Optional[Path] = None):
         # XDG Base Directory compliant paths
         self.cache_dir = cache_dir or self._get_cache_dir()
         self.state_dir = state_dir or self._get_state_dir()
-        
+
         self.repos_dir = self.cache_dir / "repos"
         self.temp_dir = self.cache_dir / "temp" / "clone-staging"
-        
+
         # Create directory structure
         self.repos_dir.mkdir(parents=True, exist_ok=True)
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
     def _get_cache_dir(self) -> Path:
         """Get XDG_CACHE_HOME compliant cache directory"""
         xdg_cache = os.environ.get('XDG_CACHE_HOME')
         if xdg_cache:
             return Path(xdg_cache) / "ca-bhfuil"
         return Path.home() / ".cache" / "ca-bhfuil"
-        
+
     def _get_state_dir(self) -> Path:
         """Get XDG_STATE_HOME compliant state directory"""
         xdg_state = os.environ.get('XDG_STATE_HOME')
         if xdg_state:
             return Path(xdg_state) / "ca-bhfuil"
         return Path.home() / ".local" / "state" / "ca-bhfuil"
-    
-    async def clone_repository(self, 
+
+    async def clone_repository(self,
                               config: RepositoryConfig,
                               progress_callback: Optional[Callable] = None) -> Path:
         """Clone repository with progress tracking"""
-        
+
     def _prepare_clone_options(self, config: RepositoryConfig) -> Dict[str, Any]:
         """Prepare pygit2 clone options from configuration"""
-        
+
     def _setup_authentication(self, config: RepositoryConfig) -> Optional[Any]:
         """Setup authentication for cloning"""
-        
-    async def _clone_with_timeout(self, 
-                                 url: str, 
+
+    async def _clone_with_timeout(self,
+                                 url: str,
                                  path: Path,
                                  options: Dict[str, Any],
                                  timeout: int = 1800) -> None:
@@ -632,27 +632,27 @@ class SyncResult:
 
 class RepositorySyncer:
     """Handles repository synchronization"""
-    
+
     def __init__(self):
         pass
-    
-    async def sync_repository(self, 
+
+    async def sync_repository(self,
                              repo_path: Path,
                              config: RepositoryConfig) -> SyncResult:
         """Sync repository based on its configuration"""
-        
-    def _sync_fetch_all(self, repo: pygit2.Repository, 
+
+    def _sync_fetch_all(self, repo: pygit2.Repository,
                        config: RepositoryConfig) -> SyncResult:
         """Fetch all refs from all remotes"""
-        
+
     def _sync_fetch_recent(self, repo: pygit2.Repository,
                           config: RepositoryConfig) -> SyncResult:
         """Fetch only recent commits"""
-        
-    def _filter_branches(self, branches: List[str], 
+
+    def _filter_branches(self, branches: List[str],
                         config: BranchConfig) -> List[str]:
         """Filter branches based on patterns"""
-        
+
     def _update_remotes(self, repo: pygit2.Repository,
                        remotes: List[RemoteConfig]) -> None:
         """Update remote configurations"""
@@ -824,7 +824,7 @@ def url_to_path(url: str) -> str:
             # Remove leading slash and .git suffix
             path = parsed.path.lstrip('/').removesuffix('.git')
             return f"{parsed.netloc}/{path}"
-    
+
     raise ValueError(f"Unsupported URL format: {url}")
 
 def sanitize_path_component(component: str) -> str:
@@ -833,52 +833,52 @@ def sanitize_path_component(component: str) -> str:
     invalid_chars = '<>:"|?*'
     for char in invalid_chars:
         component = component.replace(char, '_')
-    
+
     # Handle reserved Windows names
     reserved = {'CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'}
     if component.upper() in reserved:
         component = f"{component}_"
-    
+
     return component
 
 def ensure_path_length(path: Path, max_length: int = 260) -> Path:
     """Ensure path doesn't exceed maximum length limits"""
     if len(str(path)) <= max_length:
         return path
-    
+
     # Truncate path components while preserving structure
     parts = path.parts
     truncated_parts = []
-    
+
     for part in parts:
         if len(part) > 50:  # Truncate long components
             truncated_parts.append(part[:47] + "...")
         else:
             truncated_parts.append(part)
-    
+
     return Path(*truncated_parts)
 
 def get_repo_paths(url: str, cache_dir: Optional[Path] = None, state_dir: Optional[Path] = None) -> Tuple[Path, Path]:
     """Get both repository and state paths for a URL (XDG compliant)"""
     url_path = url_to_path(url)
-    
+
     # Sanitize path components
     sanitized_parts = [sanitize_path_component(part) for part in url_path.split('/')]
     sanitized_path = '/'.join(sanitized_parts)
-    
+
     # XDG Base Directory compliant paths
     if cache_dir is None:
         cache_dir = _get_cache_dir()
     if state_dir is None:
         state_dir = _get_state_dir()
-    
+
     repo_path = cache_dir / "repos" / sanitized_path
     state_path = state_dir / sanitized_path
-    
+
     # Ensure path length limits
     repo_path = ensure_path_length(repo_path)
     state_path = ensure_path_length(state_path)
-    
+
     return repo_path, state_path
 
 def _get_cache_dir() -> Path:
@@ -936,11 +936,11 @@ from typing import Generator
 
 class RepositoryLock:
     """Manages lock files for repository operations"""
-    
+
     def __init__(self, repo_memory_path: Path):
         self.lock_dir = repo_memory_path / ".locks"
         self.lock_dir.mkdir(exist_ok=True)
-        
+
     @contextmanager
     def sync_lock(self, timeout: int = 300) -> Generator[None, None, None]:
         """Acquire sync lock with timeout"""
@@ -950,7 +950,7 @@ class RepositoryLock:
             yield
         finally:
             self._release_lock(lock_file)
-    
+
     @contextmanager
     def analysis_lock(self, timeout: int = 60) -> Generator[None, None, None]:
         """Acquire analysis lock with timeout"""
@@ -960,7 +960,7 @@ class RepositoryLock:
             yield
         finally:
             self._release_lock(lock_file)
-            
+
     def _acquire_lock(self, lock_file: Path, timeout: int) -> None:
         """Acquire file lock with timeout"""
         start_time = time.time()
@@ -974,7 +974,7 @@ class RepositoryLock:
             except (IOError, OSError):
                 time.sleep(0.1)
         raise TimeoutError(f"Could not acquire lock {lock_file} within {timeout}s")
-        
+
     def _release_lock(self, fd) -> None:
         """Release file lock"""
         fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
@@ -992,12 +992,12 @@ from typing import Dict, Any
 
 class SchemaManager:
     """Manages SQLite schema versioning and migrations"""
-    
+
     CURRENT_VERSION = 1
-    
+
     def __init__(self, db_path: Path):
         self.db_path = db_path
-        
+
     def initialize_schema(self) -> None:
         """Initialize database with schema versioning"""
         with sqlite3.connect(self.db_path) as conn:
@@ -1010,38 +1010,38 @@ class SchemaManager:
                     migration_log TEXT
                 )
             """)
-            
+
             # Check current schema version
             cursor = conn.execute("SELECT version FROM schema_info ORDER BY version DESC LIMIT 1")
             current_version = cursor.fetchone()
-            
+
             if not current_version:
                 # Fresh database
                 self._create_initial_schema(conn)
                 conn.execute("""
-                    INSERT INTO schema_info (version, ca_bhfuil_version) 
+                    INSERT INTO schema_info (version, ca_bhfuil_version)
                     VALUES (?, ?)
                 """, (self.CURRENT_VERSION, "0.1.0"))
             elif current_version[0] < self.CURRENT_VERSION:
                 # Need migration
                 self._migrate_schema(conn, current_version[0])
-                
+
     def _create_initial_schema(self, conn: sqlite3.Connection) -> None:
         """Create initial database schema"""
         # Repository-specific schema creation
         pass
-        
+
     def _migrate_schema(self, conn: sqlite3.Connection, from_version: int) -> None:
         """Migrate schema from old version to current"""
         migrations = {
             # version: migration_function
         }
-        
+
         for version in range(from_version + 1, self.CURRENT_VERSION + 1):
             if version in migrations:
                 migrations[version](conn)
                 conn.execute("""
-                    INSERT INTO schema_info (version, ca_bhfuil_version, migration_log) 
+                    INSERT INTO schema_info (version, ca_bhfuil_version, migration_log)
                     VALUES (?, ?, ?)
                 """, (version, "0.1.0", f"Migrated from {version-1} to {version}"))
 ```
@@ -1122,7 +1122,7 @@ auth.yml
      HostName github.com
      User git
      IdentityFile ~/.ssh/id_ed25519
-     
+
    Host corp-gitlab
      HostName gitlab.corp.com
      User git
@@ -1149,12 +1149,12 @@ def setup_secure_directories():
     config_dir = get_config_dir()
     state_dir = get_state_dir()
     cache_dir = get_cache_dir()
-    
+
     # Create directories with secure permissions
     config_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    state_dir.mkdir(mode=0o700, parents=True, exist_ok=True) 
+    state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     cache_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
-    
+
     # Secure auth file if it exists
     auth_file = config_dir / "auth.yaml"
     if auth_file.exists():
@@ -1212,19 +1212,19 @@ For enhanced security on Ubuntu/Debian systems:
   #include <abstractions/base>
   #include <abstractions/nameservice>
   #include <abstractions/ssl_certs>
-  
+
   # Network access for git operations
   network inet stream,
   network inet6 stream,
-  
+
   # Git binary access
   /usr/bin/git ix,
-  
+
   # SSH access for git operations
   /usr/bin/ssh ix,
   owner @{HOME}/.ssh/ r,
   owner @{HOME}/.ssh/* r,
-  
+
   # Ca-Bhfuil directories
   owner @{HOME}/.config/ca-bhfuil/ rw,
   owner @{HOME}/.config/ca-bhfuil/** rw,
@@ -1232,7 +1232,7 @@ For enhanced security on Ubuntu/Debian systems:
   owner @{HOME}/.local/state/ca-bhfuil/** rw,
   owner @{HOME}/.cache/ca-bhfuil/ rw,
   owner @{HOME}/.cache/ca-bhfuil/** rw,
-  
+
   # Temporary files
   /tmp/ r,
   /tmp/ca-bhfuil-*/ rw,
@@ -1249,7 +1249,7 @@ Recommended environment variables for ca-bhfuil:
 
 # XDG Base Directory compliance
 export XDG_CONFIG_HOME="${HOME}/.config"
-export XDG_STATE_HOME="${HOME}/.local/state" 
+export XDG_STATE_HOME="${HOME}/.local/state"
 export XDG_CACHE_HOME="${HOME}/.cache"
 
 # Ca-Bhfuil specific
@@ -1273,21 +1273,21 @@ from loguru import logger
 # Configure loguru to send to syslog for system integration
 def setup_system_logging():
     """Configure logging for system integration"""
-    
+
     # Remove default handler
     logger.remove()
-    
+
     # Add file handler (user logs)
     log_file = get_state_dir() / "ca-bhfuil.log"
     logger.add(log_file, rotation="10 MB", retention="30 days", level="INFO")
-    
+
     # Add syslog handler for system integration
     logger.add(
         lambda msg: syslog.syslog(syslog.LOG_INFO, msg),
         format="ca-bhfuil: {message}",
         level="WARNING"
     )
-    
+
     # Add console handler for interactive use
     logger.add(sys.stderr, level="INFO", format="<level>{level: <8}</level> | {message}")
 ```
@@ -1301,24 +1301,24 @@ import resource
 
 def check_system_resources():
     """Check and respect system resource limits"""
-    
+
     # Check available disk space
     cache_dir = get_cache_dir()
     state_dir = get_state_dir()
-    
+
     cache_stat = os.statvfs(cache_dir)
     cache_free = cache_stat.f_bavail * cache_stat.f_frsize
-    
-    state_stat = os.statvfs(state_dir) 
+
+    state_stat = os.statvfs(state_dir)
     state_free = state_stat.f_bavail * state_stat.f_frsize
-    
+
     # Warn if low on space
     if cache_free < 1_000_000_000:  # Less than 1GB
         logger.warning(f"Low cache disk space: {cache_free / 1_000_000_000:.1f}GB")
-        
+
     if state_free < 100_000_000:    # Less than 100MB
         logger.warning(f"Low state disk space: {state_free / 1_000_000:.1f}MB")
-    
+
     # Respect memory limits
     soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_AS)
     if soft_limit != resource.RLIM_INFINITY:

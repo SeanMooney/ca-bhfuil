@@ -1,0 +1,213 @@
+# Dependency Management Pipeline
+# Automated dependency updates and security monitoring for ca-bhfuil
+# Runs weekly on Monday at 6 AM UTC
+
+name: Dependency Management
+
+on:
+  schedule:
+    # Weekly on Monday at 6 AM UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Update dependencies and create PR if successful
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv package manager
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: 📦 Update dependencies
+        id: update
+        run: |
+          # Create backup of current lock file
+          cp uv.lock uv.lock.backup
+
+          # Update dependencies
+          echo "Updating dependencies..."
+          uv lock --upgrade
+
+          # Check if lock file changed
+          if ! diff -q uv.lock uv.lock.backup > /dev/null 2>&1; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Dependencies updated successfully"
+
+            # Show what changed
+            echo "## Dependency Changes" > dependency_changes.md
+            echo "The following dependencies were updated:" >> dependency_changes.md
+            echo "\`\`\`" >> dependency_changes.md
+            diff uv.lock.backup uv.lock || true >> dependency_changes.md
+            echo "\`\`\`" >> dependency_changes.md
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No dependency updates available"
+          fi
+
+          # Clean up backup
+          rm uv.lock.backup
+
+      - name: 🔒 Security vulnerability scan
+        if: steps.update.outputs.changes == 'true'
+        run: |
+          # Install dependencies for testing
+          uv sync --dev --locked
+
+          # Install safety for vulnerability scanning
+          uv pip install safety
+
+          # Export requirements for safety check
+          uv export --format requirements-txt > requirements-all.txt
+
+          # Run vulnerability scan
+          echo "Running security vulnerability scan..."
+          uv run safety check --requirements=requirements-all.txt --json --output vulnerability-report.json || true
+
+          # Check if vulnerabilities were found
+          if [ -f vulnerability-report.json ]; then
+            VULN_COUNT=$(jq '.vulnerabilities | length' vulnerability-report.json 2>/dev/null || echo "0")
+            echo "Found $VULN_COUNT vulnerabilities"
+
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "## Security Vulnerabilities Found" >> dependency_changes.md
+              echo "⚠️ **Warning**: $VULN_COUNT security vulnerabilities detected" >> dependency_changes.md
+              echo "" >> dependency_changes.md
+              echo "Please review the vulnerability report and address any high-severity issues." >> dependency_changes.md
+              echo "" >> dependency_changes.md
+            fi
+          fi
+
+      - name: 🧪 Test updated dependencies
+        if: steps.update.outputs.changes == 'true'
+        run: |
+          echo "Testing updated dependencies..."
+
+          # Install updated dependencies
+          uv sync --dev --locked
+
+          # Run essential tests to ensure compatibility
+          echo "Running compatibility tests..."
+
+          # Code quality checks
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run mypy src/ --no-error-summary
+
+          # Core functionality tests
+          uv run pytest tests/unit/ -x --tb=short
+
+          # Build test
+          uv build
+
+          echo "✅ All compatibility tests passed"
+
+      - name: 📝 Create pull request
+        if: steps.update.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: update dependencies
+
+            Automated dependency update via GitHub Actions
+
+            - Updated uv.lock with latest compatible versions
+            - Verified compatibility with existing test suite
+            - Security vulnerability scan completed
+          title: "chore: weekly dependency updates"
+          body-path: dependency_changes.md
+          branch: deps/automated-updates
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+          reviewers: ${{ github.repository_owner }}
+
+      - name: 📊 Summary
+        run: |
+          if [ "${{ steps.update.outputs.changes }}" == "true" ]; then
+            echo "✅ Dependencies updated and PR created"
+          else
+            echo "ℹ️ No dependency updates available"
+          fi
+
+  # Monitor for high-severity security vulnerabilities daily
+  security-monitor:
+    name: Daily Security Monitor
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'schedule'
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: 🔍 Check for critical vulnerabilities
+        run: |
+          # Install dependencies and safety
+          uv sync --locked
+          uv pip install safety
+
+          # Export current dependencies
+          uv export --format requirements-txt > requirements.txt
+
+          # Run safety check for critical issues only
+          echo "Checking for critical security vulnerabilities..."
+          uv run safety check --requirements=requirements.txt --json --output critical-vulns.json || true
+
+          # Parse and report critical vulnerabilities
+          if [ -f critical-vulns.json ]; then
+            CRITICAL_COUNT=$(jq '.vulnerabilities | map(select(.severity == "high" or .severity == "critical")) | length' critical-vulns.json 2>/dev/null || echo "0")
+
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo "🚨 CRITICAL: $CRITICAL_COUNT high/critical vulnerabilities found!"
+
+              # Create issue for critical vulnerabilities
+              gh issue create \
+                --title "🚨 Critical Security Vulnerabilities Detected" \
+                --label "security,critical" \
+                --body "Critical security vulnerabilities have been detected in project dependencies.
+
+                **Vulnerability Count**: $CRITICAL_COUNT
+                **Severity**: High/Critical
+                **Detection Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+                Please review and update affected dependencies immediately.
+
+                See workflow run for detailed vulnerability report: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+
+              exit 1
+            else
+              echo "✅ No critical vulnerabilities detected"
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
