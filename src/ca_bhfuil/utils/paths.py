@@ -1,8 +1,10 @@
 """URL-to-path conversion utilities with cross-platform safety."""
 
+import pathlib
 import re
-from pathlib import Path
-from urllib.parse import urlparse
+import urllib.parse
+
+from ca_bhfuil.core import config
 
 
 def url_to_path(url: str) -> str:
@@ -28,7 +30,7 @@ def url_to_path(url: str) -> str:
             return f"{host}/{path}"
     else:
         # Handle HTTP/HTTPS format
-        parsed = urlparse(url)
+        parsed = urllib.parse.urlparse(url)
         if parsed.scheme in ("http", "https"):
             # Remove leading slash and .git suffix
             path = parsed.path.lstrip("/").removesuffix(".git")
@@ -41,7 +43,7 @@ def sanitize_path_component(component: str) -> str:
     """Sanitize a single path component for filesystem safety.
 
     Args:
-        component: Path component to sanitize
+        component: pathlib.Path component to sanitize
 
     Returns:
         Sanitized path component safe for all filesystems
@@ -89,11 +91,11 @@ def sanitize_path_component(component: str) -> str:
     return component
 
 
-def ensure_path_length(path: Path, max_length: int = 260) -> Path:
+def ensure_path_length(path: pathlib.Path, max_length: int = 260) -> pathlib.Path:
     """Ensure path doesn't exceed maximum length limits.
 
     Args:
-        path: Path to check and potentially truncate
+        path: pathlib.Path to check and potentially truncate
         max_length: Maximum allowed path length (Windows default: 260)
 
     Returns:
@@ -113,7 +115,7 @@ def ensure_path_length(path: Path, max_length: int = 260) -> Path:
         else:
             truncated_parts.append(part)
 
-    truncated_path = Path(*truncated_parts)
+    truncated_path = pathlib.Path(*truncated_parts)
 
     # If still too long, use hash-based truncation
     if len(str(truncated_path)) > max_length:
@@ -124,14 +126,16 @@ def ensure_path_length(path: Path, max_length: int = 260) -> Path:
         last_part = parts[-1] if parts else "repo"
         if len(last_part) > 20:
             last_part = last_part[:17] + "..."
-        truncated_path = Path(f"_truncated_{path_hash}") / last_part
+        truncated_path = pathlib.Path(f"_truncated_{path_hash}") / last_part
 
     return truncated_path
 
 
 def get_repo_paths(
-    url: str, cache_dir: Path | None = None, state_dir: Path | None = None
-) -> tuple[Path, Path]:
+    url: str,
+    cache_dir: pathlib.Path | None = None,
+    state_dir: pathlib.Path | None = None,
+) -> tuple[pathlib.Path, pathlib.Path]:
     """Get both repository and state paths for a URL (XDG compliant).
 
     Args:
@@ -142,8 +146,6 @@ def get_repo_paths(
     Returns:
         Tuple of (repo_path, state_path)
     """
-    from ..core.config import get_cache_dir, get_state_dir
-
     url_path = url_to_path(url)
 
     # Sanitize path components
@@ -152,9 +154,9 @@ def get_repo_paths(
 
     # Use provided directories or XDG defaults
     if cache_dir is None:
-        cache_dir = get_cache_dir()
+        cache_dir = config.get_cache_dir()
     if state_dir is None:
-        state_dir = get_state_dir()
+        state_dir = config.get_state_dir()
 
     repo_path = cache_dir / "repos" / sanitized_path
     state_path = state_dir / sanitized_path
@@ -177,26 +179,22 @@ def is_valid_url(url: str) -> bool:
     """
     if not url or not isinstance(url, str):
         return False
-    
+
     try:
         # First check if it can be parsed as a URL
         url_to_path(url)
-        
+
         # Additional checks for git-like URLs
         if url.startswith("git@"):
             # SSH format should have colon after host
             return ":" in url and "/" in url
-        elif url.startswith(("http://", "https://")):
+        if url.startswith(("http://", "https://")):
             # HTTP/HTTPS should have a path component
-            parsed = urlparse(url)
+            parsed = urllib.parse.urlparse(url)
             path = parsed.path.strip("/")
             # Should have at least host/repo format or end with .git
-            return (
-                "/" in path or 
-                path.endswith(".git") or
-                url.endswith(".git")
-            )
-        
+            return "/" in path or path.endswith(".git") or url.endswith(".git")
+
         return False
     except ValueError:
         return False
@@ -220,7 +218,7 @@ def normalize_url(url: str) -> str:
                 return f"https://{host}/{path}.git"
 
         # Ensure HTTPS URLs have .git suffix
-        parsed = urlparse(url)
+        parsed = urllib.parse.urlparse(url)
         if parsed.scheme in ("http", "https"):
             path = parsed.path.rstrip("/")
             if not path.endswith(".git"):

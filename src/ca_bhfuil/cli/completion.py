@@ -1,43 +1,43 @@
 """Bash completion support for ca-bhfuil CLI."""
 
-from pathlib import Path
-from typing import List
+import pathlib
 
 import typer
 
 
-def complete_format(incomplete: str) -> List[str]:
+def complete_format(incomplete: str) -> list[str]:
     """Complete format options."""
     formats = ["yaml", "json"]
     return [fmt for fmt in formats if fmt.startswith(incomplete)]
 
 
-def complete_repo_path(incomplete: str) -> List[str]:
+def complete_repo_path(incomplete: str) -> list[str]:
     """Complete repository paths (directories)."""
     try:
         if incomplete:
-            path = Path(incomplete)
+            path = pathlib.Path(incomplete)
             if path.is_dir():
                 # Complete subdirectories
                 return [
-                    str(p) for p in path.iterdir() 
+                    str(p)
+                    for p in path.iterdir()
                     if p.is_dir() and str(p).startswith(incomplete)
                 ]
-            else:
-                # Complete from parent directory
-                parent = path.parent
-                name = path.name
-                if parent.exists():
-                    return [
-                        str(parent / p.name) for p in parent.iterdir()
-                        if p.is_dir() and p.name.startswith(name)
-                    ]
+            # Complete from parent directory
+            parent = path.parent
+            name = path.name
+            if parent.exists():
+                return [
+                    str(parent / p.name)
+                    for p in parent.iterdir()
+                    if p.is_dir() and p.name.startswith(name)
+                ]
         else:
             # Complete from current directory
-            return [str(p) for p in Path(".").iterdir() if p.is_dir()]
+            return [str(p) for p in pathlib.Path().iterdir() if p.is_dir()]
     except (OSError, PermissionError):
         return []
-    
+
     return []
 
 
@@ -45,15 +45,15 @@ def install_completion(shell: str = "bash") -> None:
     """Install shell completion for ca-bhfuil."""
     if shell == "bash":
         completion_script = _generate_bash_completion()
-        completion_file = Path.home() / ".bash_completion.d" / "ca-bhfuil"
-        
+        completion_file = pathlib.Path.home() / ".bash_completion.d" / "ca-bhfuil"
+
         # Create completion directory if it doesn't exist
         completion_file.parent.mkdir(exist_ok=True)
-        
+
         # Write completion script
         with open(completion_file, "w") as f:
             f.write(completion_script)
-        
+
         typer.echo(f"Bash completion installed to {completion_file}")
         typer.echo("Source your .bashrc or start a new shell to enable completion")
     else:
@@ -62,7 +62,7 @@ def install_completion(shell: str = "bash") -> None:
 
 def _generate_bash_completion() -> str:
     """Generate bash completion script."""
-    return '''#!/bin/bash
+    return """#!/bin/bash
 # Bash completion for ca-bhfuil CLI
 
 _ca_bhfuil_completion() {
@@ -71,16 +71,16 @@ _ca_bhfuil_completion() {
 
     # Main commands
     local commands="config search status"
-    
+
     # Config subcommands
     local config_commands="init validate status show"
-    
+
     # Config show options
     local config_show_options="--repos --global --auth --all --format"
-    
+
     # Format options
     local format_options="yaml json"
-    
+
     # Global options
     local global_options="--version --help --install-completion --show-completion"
 
@@ -119,7 +119,7 @@ _ca_bhfuil_completion() {
                             local have_global=0
                             local have_auth=0
                             local have_all=0
-                            
+
                             for word in "${words[@]}"; do
                                 case "$word" in
                                     --repos) have_repos=1 ;;
@@ -128,7 +128,7 @@ _ca_bhfuil_completion() {
                                     --all) have_all=1 ;;
                                 esac
                             done
-                            
+
                             # If --all is present, only offer format and help
                             if [ $have_all -eq 1 ]; then
                                 COMPREPLY=($(compgen -W "--format --help" -- "$cur"))
@@ -201,7 +201,7 @@ complete -F _ca_bhfuil_completion ca-bhfuil
 _python_ca_bhfuil_completion() {
     local cur prev words cword
     _init_completion || return
-    
+
     # Check if this is python -m ca_bhfuil
     if [[ "${words[1]}" == "-m" && "${words[2]}" == "ca_bhfuil" ]]; then
         # Shift words to remove "python -m ca_bhfuil" and call main completion
@@ -214,19 +214,19 @@ _python_ca_bhfuil_completion() {
 
 # Register completion for python -m ca_bhfuil
 complete -F _python_ca_bhfuil_completion -o bashdefault -o default python
-'''
+"""
 
 
 def generate_completion_scripts() -> None:
     """Generate completion scripts for different shells."""
-    scripts_dir = Path(__file__).parent.parent.parent.parent / "scripts"
+    scripts_dir = pathlib.Path(__file__).parent.parent.parent.parent / "scripts"
     scripts_dir.mkdir(exist_ok=True)
-    
+
     # Generate bash completion
     bash_script = scripts_dir / "ca-bhfuil-completion.bash"
     with open(bash_script, "w") as f:
         f.write(_generate_bash_completion())
-    
+
     typer.echo(f"Generated bash completion script: {bash_script}")
 
 

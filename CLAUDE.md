@@ -53,13 +53,22 @@ docs/design/
 ### Before Starting Any Work
 1. **Read all files in `ai/memory/`** to understand current project state
 2. **Review relevant design documents** for technical context
-3. **Update memory files** with any new insights or decisions
+3. **Read `ai/memory/ai-style-guide.md`** for coding standards and patterns
+4. **Update memory files** with any new insights or decisions
 
 ### When Ready to Begin Development
 1. **Check `ai/memory/current-focus.md`** for current priorities
 2. **Follow tasks in `ai/memory/bootstrap-tasks.md`** for implementation steps
 3. **Reference technology stack** in `docs/design/technology-stack.md`
-4. **Update memory files** as you make progress and decisions
+4. **ALWAYS follow coding guidelines** in `ai/memory/ai-style-guide.md`
+5. **Update memory files** as you make progress and decisions
+
+### Code Quality Requirements
+- **Follow the AI Style Guide**: All code must adhere to `ai/memory/ai-style-guide.md`
+- **Module-only imports**: Never import functions/classes directly - only import modules
+- **Type hints required**: Use modern Python 3.10+ type syntax throughout
+- **Test coverage**: Write comprehensive tests for all new functionality
+- **Run quality checks**: `uv run ruff check`, `uv run mypy`, `uv run pytest` before committing
 
 ## Repository Structure (Current)
 
@@ -180,11 +189,31 @@ repository detection, commit lookup, and synchronization.
 - `ai/memory/current-focus.md` - What you're actively working on
 - `ai/memory/architecture-decisions.md` - Any new technical decisions
 - `ai/memory/bootstrap-tasks.md` - Progress on development tasks
+- `ai/memory/ai-style-guide.md` - Keep in sync with `docs/code-style.md`
 
 ### Document New Patterns
 - Add development patterns to appropriate memory files
 - Update project context when understanding evolves
 - Create session logs for complex development work
+
+### Style Guide Synchronization
+
+**CRITICAL**: When `docs/code-style.md` is updated, `ai/memory/ai-style-guide.md` MUST be updated to maintain an AI-optimized version.
+
+**Process for Style Guide Updates**:
+1. **When `docs/code-style.md` changes**: AI assistant must immediately update `ai/memory/ai-style-guide.md`
+2. **AI-optimized format**: Create condensed, actionable guidelines focused on patterns AI assistants need
+3. **Key differences**: AI guide emphasizes import patterns, type hints, and critical anti-patterns
+4. **Bidirectional sync**: Changes to coding practices should be reflected in both files
+5. **Validation**: AI should verify the condensed guide captures all critical patterns from the full guide
+
+**Essential AI Style Guide Elements**:
+- Module-only import patterns (CRITICAL)
+- Type hint requirements and modern syntax
+- Error handling patterns
+- Testing structure and mocking guidelines
+- Common anti-patterns to avoid
+- Quick reference examples for immediate use
 
 ## Questions or Issues?
 
@@ -193,6 +222,20 @@ If you need clarification:
 2. **Review design documents** for comprehensive context  
 3. **Update memory files** with new insights
 4. **Ask specific questions** about unclear requirements
+
+## 🚨 Critical Reminders for AI Assistants
+
+### Code Quality Standards
+- **ALWAYS follow `ai/memory/ai-style-guide.md`** - Non-negotiable coding standards
+- **Module-only imports**: Never import functions/classes directly (e.g., use `pathlib.Path`, not `from pathlib import Path`)
+- **Type hints required**: Use modern Python 3.10+ syntax (`list[str]` not `List[str]`)
+- **Test first**: Write comprehensive tests for all new functionality
+- **Quality gates**: Run `uv run ruff check`, `uv run mypy`, `uv run pytest` before any commit
+
+### Style Guide Synchronization
+- **When `docs/code-style.md` changes**: IMMEDIATELY update `ai/memory/ai-style-guide.md`
+- **Maintain AI optimization**: Keep the condensed guide focused on patterns AI assistants need most
+- **Verify completeness**: Ensure critical patterns from the full guide are captured in the AI version
 
 ---
 

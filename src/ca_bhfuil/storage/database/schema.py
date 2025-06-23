@@ -1,25 +1,25 @@
 """Database schema definitions for ca-bhfuil."""
 
+import contextlib
+import pathlib
 import sqlite3
-from contextlib import contextmanager
-from pathlib import Path
-from typing import Any
+import typing
 
 from loguru import logger
 
-from ca_bhfuil.core.config import get_state_dir
+from ca_bhfuil.core import config
 
 
 class DatabaseManager:
     """SQLite database manager for ca-bhfuil."""
 
-    def __init__(self, db_path: Path | None = None) -> None:
+    def __init__(self, db_path: pathlib.Path | None = None) -> None:
         """Initialize database manager.
 
         Args:
             db_path: Optional database path override
         """
-        settings = get_settings()
+        settings = config.get_settings()
         self.db_path = db_path or (settings.cache.directory / "ca-bhfuil.db")
 
         # Ensure database directory exists
@@ -116,7 +116,7 @@ class DatabaseManager:
 
             conn.commit()
 
-    @contextmanager
+    @contextlib.contextmanager
     def get_connection(self):
         """Get database connection context manager."""
         conn = sqlite3.connect(str(self.db_path))
@@ -148,7 +148,7 @@ class DatabaseManager:
             conn.commit()
             return cursor.lastrowid
 
-    def get_repository(self, path: str) -> dict[str, Any] | None:
+    def get_repository(self, path: str) -> dict[str, typing.Any] | None:
         """Get repository by path.
 
         Args:
@@ -185,7 +185,7 @@ class DatabaseManager:
             )
             conn.commit()
 
-    def add_commit(self, repository_id: int, commit_data: dict[str, Any]) -> int:
+    def add_commit(self, repository_id: int, commit_data: dict[str, typing.Any]) -> int:
         """Add a commit to the database.
 
         Args:
@@ -231,7 +231,7 @@ class DatabaseManager:
         sha_pattern: str | None = None,
         message_pattern: str | None = None,
         limit: int = 100,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, typing.Any]]:
         """Find commits matching criteria.
 
         Args:
@@ -268,7 +268,7 @@ class DatabaseManager:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> dict[str, typing.Any]:
         """Get database statistics.
 
         Returns:
