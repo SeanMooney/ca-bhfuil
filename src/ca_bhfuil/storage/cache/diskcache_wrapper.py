@@ -20,10 +20,10 @@ class CacheManager:
         Args:
             cache_dir: Optional cache directory override
         """
-        settings = config.get_settings()
-        self.cache_dir = cache_dir or settings.cache.directory
-        self.max_size_bytes = settings.cache.max_size_mb * 1024 * 1024
-        self.default_ttl = datetime.timedelta(hours=settings.cache.default_ttl_hours)
+        cache_directory = config.get_cache_dir()
+        self.cache_dir = cache_dir or cache_directory
+        self.max_size_bytes = 1024 * 1024 * 1024  # 1GB default
+        self.default_ttl = datetime.timedelta(hours=24)  # 24 hours default
 
         # Ensure cache directory exists
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +72,8 @@ class CacheManager:
                 ttl = self.default_ttl
 
             expire_time = datetime.datetime.now() + ttl
-            return self._cache.set(key, value, expire=expire_time.timestamp())
+            result = self._cache.set(key, value, expire=expire_time.timestamp())
+            return bool(result)
         except Exception as e:
             logger.warning(f"Cache set error for key '{key}': {e}")
             return False
@@ -87,7 +88,8 @@ class CacheManager:
             True if key was deleted
         """
         try:
-            return self._cache.delete(key)
+            result = self._cache.delete(key)
+            return bool(result)
         except Exception as e:
             logger.warning(f"Cache delete error for key '{key}': {e}")
             return False
