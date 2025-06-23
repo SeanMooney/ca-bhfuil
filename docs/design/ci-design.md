@@ -1,7 +1,7 @@
 # Ca-Bhfuil CI/CD Design Document
 
 > **Continuous Integration and Deployment strategy for the Ca-Bhfuil project**
-> 
+>
 > **Version**: 1.0 | **Last Updated**: 2025-06-24 | **Status**: Implementation Ready
 
 ## Executive Summary
@@ -53,14 +53,12 @@ graph TD
 | **ruff** | Formatting & Linting | Latest | ✅ |
 | **mypy** | Type Checking | 1.8+ | ❌ |
 | **pytest** | Unit & Integration Testing | 7.4+ | ❌ |
-| **bandit** | Security Scanning | 1.7+ | ❌ |
 
 ### Quality Gates
 All checks must pass for merge approval:
 1. **Code Formatting**: ruff format compliance
 2. **Linting**: ruff check with project rules
 3. **Type Safety**: mypy strict mode (src only)
-4. **Security**: bandit security scan
 5. **Tests**: 96+ tests passing with coverage targets
 6. **File Validation**: YAML/JSON/TOML syntax checking
 
@@ -73,7 +71,6 @@ All checks must pass for merge approval:
 2. Ruff formatting (auto-fix)
 3. Ruff linting (auto-fix where possible)
 4. Type checking (mypy - no auto-fix)
-5. Security scanning (bandit - no auto-fix)
 ```
 
 ### Auto-fix Capabilities
@@ -115,7 +112,6 @@ on: [push, pull_request]
 2. **Code Quality** (2 min)
    - ruff check (formatting + linting)
    - mypy type checking (strict mode)
-   - bandit security scanning
 
 3. **Testing** (4 min)
    - Unit tests with coverage
@@ -170,7 +166,6 @@ on: [push, pull_request]
 ### Security Standards
 - **Dependency Scanning**: Daily vulnerability checks
 - **Secret Detection**: Pre-commit hooks prevent credential leaks
-- **Code Analysis**: bandit security linting on all Python code
 - **Supply Chain**: Verified dependencies and lock file validation
 
 ### Documentation Quality

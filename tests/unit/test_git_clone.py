@@ -397,14 +397,19 @@ class TestAuthenticationSetup:
         """Test SSH authentication setup."""
         cloner = clone.RepositoryCloner()
 
-        # Mock auth method
-        with mock.patch.object(cloner.config_manager, "get_auth_method") as mock_auth:
+        # Mock auth method and SSH key file existence
+        with (
+            mock.patch.object(cloner.config_manager, "get_auth_method") as mock_auth,
+            mock.patch("pathlib.Path.exists") as mock_exists,
+        ):
             # AuthMethod already imported as config.AuthMethod
-
             mock_auth.return_value = config.AuthMethod(
                 type="ssh_key",
                 ssh_key_path="~/.ssh/id_ed25519",
             )
+
+            # Mock SSH key file existence
+            mock_exists.return_value = True
 
             auth_callbacks = cloner._setup_authentication(repo_config_with_auth)
 

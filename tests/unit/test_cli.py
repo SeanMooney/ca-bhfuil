@@ -497,6 +497,7 @@ class TestCLIHelp:
 
     def test_config_show_help(self, cli_runner: typer.testing.CliRunner):
         """Test config show help."""
+
         result = cli_runner.invoke(main.app, ["config", "show", "--help"])
 
         assert result.exit_code == 0

@@ -25,37 +25,40 @@ classifiers = [
 dependencies = [
     # Core Framework
     "pydantic>=2.0.0",
-    
+
     # High-Performance Git Analysis
     "pygit2>=1.13.0",
     "diskcache>=5.6.0",
-    
+
     # Issue Tracker Integration
     "httpx>=0.25.0",
     "regex>=2023.0.0",
-    
+
     # Configuration Management
     "pydantic-settings[yaml]>=2.0.0",
     "python-dotenv>=1.0.0",
-    
+
     # Terminal Interface
-    "typer[all]>=0.9.0",
+    "typer>=0.9.0",
     "prompt-toolkit>=3.0.0",
-    
+
     # Logging
     "loguru>=0.7.0",
-    
+
     # Utilities
     "aiofiles>=23.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "pre-commit",
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "pre-commit>=3.4.0",
+    "loguru-mypy"
 ]
 ai = [
     "pydantic-ai>=0.0.1",
@@ -174,6 +177,7 @@ module = [
     "diskcache.*",
     "fastmcp.*",
     "pydantic_ai.*",
+    "loguru.*",
 ]
 ignore_missing_imports = true
 
@@ -205,6 +209,7 @@ dev-dependencies = [
     "mypy>=1.5.0",
     "pre-commit>=3.4.0",
     "types-pyyaml>=6.0.12.20250516",
+    "pytest-cov>=6.2.1",
 ]
 
 [tool.uv.sources]

@@ -206,10 +206,10 @@ class RepositoryCloner:
         checkout_branch: str | None = None  # Clone all branches
 
         # Set up remote callbacks
-        remote_callbacks = pygit2.RemoteCallbacks()  # type: ignore[attr-defined,no-untyped-call]
+        remote_callbacks = pygit2.RemoteCallbacks()
 
         # Set progress callback (method, not constructor parameter)
-        if hasattr(remote_callbacks, 'progress'):
+        if hasattr(remote_callbacks, "progress"):
             remote_callbacks.progress = _progress_callback
 
         # Add authentication if available
@@ -227,7 +227,7 @@ class RepositoryCloner:
             )
 
             # Gather statistics
-            if hasattr(repository, 'references'):
+            if hasattr(repository, "references"):
                 refs_count = len(list(repository.references))
             else:
                 refs_count = 0
@@ -305,9 +305,11 @@ class RepositoryCloner:
             """SSH key credentials callback."""
             # Parameters required by callback interface but not all used
             del url, username_from_url
-            if (hasattr(pygit2, 'credentials')
-                and hasattr(pygit2.credentials, 'GIT_CREDENTIAL_SSH_KEY')
-                and allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY):
+            if (
+                hasattr(pygit2, "credentials")
+                and hasattr(pygit2.credentials, "GIT_CREDENTIAL_SSH_KEY")
+                and allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY
+            ):
                 return pygit2.Keypair(
                     "git",
                     str(ssh_key_path) + ".pub",
@@ -340,9 +342,11 @@ class RepositoryCloner:
             """Token credentials callback."""
             # Parameters required by callback interface but not all used
             del url, username_from_url
-            if (hasattr(pygit2, 'credentials')
-                and hasattr(pygit2.credentials, 'GIT_CREDENTIAL_USERPASS_PLAINTEXT')
-                and allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERPASS_PLAINTEXT):
+            if (
+                hasattr(pygit2, "credentials")
+                and hasattr(pygit2.credentials, "GIT_CREDENTIAL_USERPASS_PLAINTEXT")
+                and allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERPASS_PLAINTEXT
+            ):
                 return pygit2.UserPass(username, token)
             return None
 
@@ -384,7 +388,7 @@ class RepositoryCloner:
             checks["is_bare"] = repository.is_bare
 
             # Check for refs
-            if hasattr(repository, 'references'):
+            if hasattr(repository, "references"):
                 refs = list(repository.references)
                 checks["has_refs"] = len(refs) > 0
                 checks["refs_count"] = len(refs)

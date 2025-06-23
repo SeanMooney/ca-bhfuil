@@ -15,7 +15,7 @@ This document tracks key architectural decisions made for Ca-Bhfuil development.
 - State: `$XDG_STATE_HOME/ca-bhfuil` (default: `~/.local/state/ca-bhfuil`)  
 - Cache: `$XDG_CACHE_HOME/ca-bhfuil` (default: `~/.cache/ca-bhfuil`)
 
-**Consequences**: 
+**Consequences**:
 - ✅ Standards compliant and user-friendly
 - ✅ Proper data separation for backup strategies
 - ✅ System integration friendly
@@ -36,7 +36,7 @@ repo_state/github.com/torvalds/linux/
 
 **Consequences**:
 - ✅ No slug generation complexity
-- ✅ Intuitive navigation 
+- ✅ Intuitive navigation
 - ✅ Natural multi-source support
 - ✅ Collision-free organization
 - ⚠️ Requires robust URL parsing
@@ -47,7 +47,7 @@ repo_state/github.com/torvalds/linux/
 
 **Context**: Security requirement to keep auth info separate from git-committable configs.
 
-**Decision**: 
+**Decision**:
 - Main configs (`repositories.yaml`, `global-settings.yaml`) are git-safe
 - Authentication in separate `auth.yaml` file (git-ignored)
 - SSH keys preferred over tokens as default

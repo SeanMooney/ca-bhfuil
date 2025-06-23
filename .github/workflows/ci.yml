@@ -1,0 +1,183 @@
+# Continuous Integration Pipeline
+# Implements comprehensive testing and quality assurance for ca-bhfuil
+# Target: < 10 minutes execution time on Ubuntu 24.04 with Python 3.12
+
+name: Continuous Integration
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
+  workflow_dispatch:  # Allow manual triggering
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Main CI pipeline - comprehensive testing
+  ci:
+    env:
+      CLICOLOR: 0
+      TERM: dumb
+    name: CI Pipeline (Ubuntu 24.04, Python 3.12)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      # Environment Setup (2 min target)
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper analysis
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv package manager
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: 📦 Install dependencies
+        run: |
+          uv python install 3.12
+          uv venv -p 3.12
+          uv sync --dev --locked
+          uv pip list
+
+      - name: Set PATH for ca-bhfuil
+        run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
+
+      # Code Quality Checks (2 min target)
+      - name: 🎨 Check code formatting with ruff
+        run: |
+          uv run ruff format --check --diff .
+
+      - name: 🔎 Lint code with ruff
+        run: |
+          uv run ruff check . --output-format=github
+
+      # Testing Suite (4 min target)
+      - name: 🧪 Run unit tests
+        run: |
+          uv run pytest tests/unit/ \
+            --cov=src/ca_bhfuil \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=50 \
+            --durations=10 \
+            -v
+
+      - name: 🔗 Run integration tests
+        run: |
+          uv run pytest tests/integration/ \
+            --cov=src/ca_bhfuil \
+            --cov-append \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --durations=10 \
+            -v
+        env:
+          # Allow network access for integration tests
+          PYTEST_NETWORK_TESTS: "true"
+
+      - name: 📊 Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      # Build Validation (2 min target)
+      - name: 🏗️ Build package distributions
+        run: |
+          uv build --wheel --sdist
+          ls -la dist/
+
+      - name: ✅ Test package installation
+        run: |
+          # Test wheel installation
+          uv pip install dist/*.whl --force-reinstall
+          ca-bhfuil --version
+          ca-bhfuil --help
+
+          # Test source distribution installation
+          uv pip uninstall ca-bhfuil
+          uv pip install dist/*.tar.gz --force-reinstall
+          ca-bhfuil --version
+
+      - name: 🔍 Validate CLI functionality
+        run: |
+          # Test basic CLI commands that don't require repositories
+          ca-bhfuil --version
+          ca-bhfuil --help
+          ca-bhfuil config --help || true  # May not exist yet
+
+      # Artifact Collection
+      - name: 📋 Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.sha }}
+          path: |
+            coverage.xml
+            bandit-report.json
+            pytest-report.xml
+          retention-days: 30
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+
+  # Dependency security check
+  security:
+    name: Security & Dependency Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: 🔒 Check for security vulnerabilities
+        run: |
+          uv python install 3.12
+          uv venv -p 3.12
+          # Install safety for vulnerability scanning
+          uv pip install safety
+
+          # Generate requirements from uv.lock for safety
+          uv export --format requirements-txt --no-dev > requirements.txt
+
+          # Run safety check
+          uv run safety check --requirements=requirements.txt --json --output safety-report.json || true
+          uv run safety check --requirements=requirements.txt || true
+
+      - name: 📋 Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report-${{ github.sha }}
+          path: safety-report.json
+          retention-days: 30

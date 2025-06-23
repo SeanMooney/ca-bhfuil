@@ -1,0 +1,303 @@
+# Release Pipeline
+# Automated package publishing for ca-bhfuil
+# Triggered by version tags (v*.*.*)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write  # For PyPI trusted publishing
+
+jobs:
+  # Validation - ensure full CI passes before release
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ Extract version information
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if this is a pre-release (contains alpha, beta, rc)
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "This is a pre-release: $VERSION"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "This is a stable release: $VERSION"
+          fi
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv package manager
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: 📦 Install dependencies
+        run: uv sync --dev --locked
+
+      - name: 🔍 Validate version consistency
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NO_V="${VERSION#v}"
+
+          # Check pyproject.toml version matches tag
+          PROJECT_VERSION=$(grep -E '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+
+          if [ "$PROJECT_VERSION" != "$VERSION_NO_V" ]; then
+            echo "❌ Version mismatch:"
+            echo "  Tag version: $VERSION_NO_V"
+            echo "  Project version: $PROJECT_VERSION"
+            echo "Please update pyproject.toml version to match the tag"
+            exit 1
+          fi
+
+          echo "✅ Version validation passed: $VERSION_NO_V"
+
+      - name: 🧪 Run full test suite
+        run: |
+          # Code quality
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run mypy src/ --no-error-summary
+
+          # Security scan
+          uv run bandit -c pyproject.toml -r src/
+
+          # Tests with coverage
+          uv run pytest tests/ \
+            --cov=src/ca_bhfuil \
+            --cov-report=term-missing \
+            --cov-fail-under=85 \
+            -v
+
+          echo "✅ All validation tests passed"
+
+  # Build package distributions
+  build:
+    name: Build Distributions
+    runs-on: ubuntu-24.04
+    needs: validate
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ⚡ Install uv package manager
+        uses: astral-sh/setup-uv@v3
+
+      - name: 🏗️ Build package distributions
+        run: |
+          echo "Building wheel and source distribution..."
+          uv build --wheel --sdist
+
+          # List built packages
+          echo "Built packages:"
+          ls -la dist/
+
+          # Verify package contents
+          echo "Package contents:"
+          python -m tarfile -l dist/*.tar.gz | head -20
+          python -m zipfile -l dist/*.whl | head -20
+
+      - name: ✅ Test package installation
+        run: |
+          # Create fresh environment for testing
+          python -m venv test-env
+          source test-env/bin/activate
+
+          # Test wheel installation
+          echo "Testing wheel installation..."
+          pip install dist/*.whl
+          ca-bhfuil --version
+          ca-bhfuil --help
+
+          # Test uninstall/reinstall with source dist
+          pip uninstall ca-bhfuil -y
+          echo "Testing source distribution installation..."
+          pip install dist/*.tar.gz
+          ca-bhfuil --version
+
+          # Clean up
+          deactivate
+          rm -rf test-env
+
+          echo "✅ Package installation tests passed"
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          retention-days: 30
+
+  # Publish to PyPI
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-24.04
+    needs: [validate, build]
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ca-bhfuil
+
+    steps:
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: 🚀 Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+          verbose: true
+
+  # Create GitHub release
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-24.04
+    needs: [validate, publish]
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: 📝 Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+
+          # Generate changelog since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ]; then
+            echo "## Changes since $LAST_TAG" > release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" "$LAST_TAG"..HEAD >> release_notes.md
+          else
+            echo "## Initial Release" > release_notes.md
+            echo "" >> release_notes.md
+            echo "First release of ca-bhfuil - git repository analysis tool for open source maintainers." >> release_notes.md
+          fi
+
+          echo "" >> release_notes.md
+          echo "## Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "pip install ca-bhfuil==${{ needs.validate.outputs.version#v }}" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Package Files" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "| File | Size |" >> release_notes.md
+          echo "|------|------|" >> release_notes.md
+
+          for file in dist/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              size=$(ls -lh "$file" | awk '{print $5}')
+              echo "| $filename | $size |" >> release_notes.md
+            fi
+          done
+
+      - name: 🎉 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: Release ${{ needs.validate.outputs.version }}
+          body_path: release_notes.md
+          files: dist/*
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          draft: false
+          generate_release_notes: true
+          make_latest: ${{ needs.validate.outputs.is_prerelease == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Post-release tasks
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-24.04
+    needs: [validate, github-release]
+    if: always() && needs.github-release.result == 'success'
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📊 Release summary
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          IS_PRERELEASE="${{ needs.validate.outputs.is_prerelease }}"
+
+          echo "🎉 Release $VERSION completed successfully!"
+          echo ""
+          echo "📦 Package published to PyPI: https://pypi.org/project/ca-bhfuil/${{ needs.validate.outputs.version#v }}/"
+          echo "🏷️ GitHub release created: ${{ github.server_url }}/${{ github.repository }}/releases/tag/$VERSION"
+          echo ""
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "⚠️ This was a pre-release version"
+          else
+            echo "✅ This was a stable release"
+          fi
+
+          echo ""
+          echo "Next steps:"
+          echo "- Monitor PyPI for download statistics"
+          echo "- Update documentation if needed"
+          echo "- Announce release in appropriate channels"

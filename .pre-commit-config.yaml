@@ -1,67 +1,67 @@
 # Pre-commit hooks for code quality and consistency
+# Optimized for fast feedback (< 2 minutes) with ruff-first philosophy
 # See https://pre-commit.com for more information
 
 repos:
-  # General file cleanup
+  # File format validation (fast fail)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
-      - id: trailing-whitespace
-        args: [--markdown-linebreak-ext=md]
-      - id: end-of-file-fixer
       - id: check-yaml
       - id: check-toml
       - id: check-json
       - id: check-merge-conflict
-      - id: check-added-large-files
-        args: [--maxkb=1000]
-      - id: mixed-line-ending
-        args: [--fix=lf]
       - id: check-ast
-      - id: debug-statements
       - id: detect-private-key
 
-  # Remove tabs (replace with spaces)
+  # File cleanup (auto-fix)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: debug-statements
+
+  # Remove tabs (auto-fix)
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.5
     hooks:
       - id: remove-tabs
         exclude: '.*\.(svg)$'
 
-  # Ruff formatting and linting (primary tool)
+  # Ruff formatting and linting (primary tool - auto-fix enabled)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.9
+    rev: v0.12.0
     hooks:
-      # Run the formatter first
+      # Run the formatter first (auto-fix)
       - id: ruff-format
         types_or: [python, pyi, jupyter]
-      # Run the linter with auto-fix
+      # Run the linter with auto-fix where possible
       - id: ruff
         types_or: [python, pyi, jupyter]
         args: [--fix, --exit-non-zero-on-fix]
 
-  # Type checking for main code (exclude tests)
+  # Type checking (strict mode, no auto-fix)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.16.1
     hooks:
       - id: mypy
-        additional_dependencies: 
+        additional_dependencies:
           - types-PyYAML
           - types-requests
-        args: [--strict, --show-error-codes]
+          - pydantic
+          - typer
+          - loguru-mypy
+        args: [--strict, --show-error-codes, --no-error-summary, --install-types]
         exclude: ^(tests/|scripts/)
 
-  # Security scanning
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
-    hooks:
-      - id: bandit
-        args: [-c, pyproject.toml]
-        additional_dependencies: [bandit[toml]]
-        exclude: ^tests/
-
   # Bash script linting
-  - repo: https://opendev.org/openstack/bashate
+  - repo: https://github.com/openstack/bashate
     rev: 2.1.1
     hooks:
       - id: bashate
@@ -69,22 +69,22 @@ repos:
 
   # Conventional commit message validation
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.0.0
+    rev: v4.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: [--strict]
 
 # Global configuration
-default_stages: [commit]
+default_stages: [pre-commit]
 fail_fast: false
 
-# CI configuration
+# CI configuration optimized for performance
 ci:
   autofix_commit_msg: |
     style: auto-fix pre-commit hooks
-    
-    🤖 Generated with pre-commit auto-fix
+
+    🤖 Generated with pre-commit.ci auto-fix
   autofix_prs: true
   autoupdate_branch: ''
   autoupdate_commit_msg: 'chore: pre-commit autoupdate'

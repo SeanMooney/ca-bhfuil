@@ -81,7 +81,7 @@ message = 'Hello, world!'  # Inconsistent with project standard
 Organize imports in the following order with blank lines between groups:
 
 1. **Standard library imports**
-2. **Third-party library imports** 
+2. **Third-party library imports**
 3. **Local application imports**
 
 Within each group, sort imports alphabetically. Use absolute imports for clarity.
@@ -224,20 +224,20 @@ def clone_repository(
     progress_callback: Callable[[CloneProgress], None] | None = None,
 ) -> CloneResult:
     """Clone a git repository to the specified path.
-    
+
     Args:
         url: The repository URL to clone from.
         target_path: Local path where repository will be cloned.
         bare: Whether to create a bare repository. Defaults to True.
         progress_callback: Optional callback for progress updates.
-        
+
     Returns:
         CloneResult containing operation status and metadata.
-        
+
     Raises:
         CloneError: If the clone operation fails.
         ValidationError: If the URL or path is invalid.
-        
+
     Examples:
         >>> result = clone_repository(
         ...     "https://github.com/user/repo.git",
@@ -341,16 +341,16 @@ logger.error(str(error))  # No context about what failed
 ```python
 class TestRepositoryCloner:
     """Test repository cloning functionality."""
-    
+
     @pytest.fixture
     def temp_repo_path(self, tmp_path):
         """Provide a temporary repository path."""
         return tmp_path / "test-repo"
-    
+
     def test_successful_clone(self, temp_repo_path):
         """Test successful repository cloning."""
         # Test implementation
-        
+
     def test_clone_with_invalid_url(self, temp_repo_path):
         """Test cloning with invalid URL raises appropriate error."""
         # Test implementation
@@ -373,7 +373,7 @@ def test_clone_success(self, mock_clone):
     mock_repo = Mock()
     mock_repo.is_bare = True
     mock_clone.return_value = mock_repo
-    
+
     # Test implementation
     mock_clone.assert_called_once()
 ```
@@ -410,7 +410,7 @@ with pytest.raises(ValidationError, match="Invalid URL format"):
 def validate_repository_url(url: str) -> bool:
     """Validate that URL appears to be a valid git repository."""
     # Implementation
-    
+
 def clone_repository(
     url: str,
     target_path: Path,
@@ -527,7 +527,7 @@ class RepositoryConfig:
     source: dict[str, Any]
     auth_key: str | None = None
     storage: StorageConfig = field(default_factory=StorageConfig)
-    
+
     @property
     def url(self) -> str:
         """Get repository URL."""

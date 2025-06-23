@@ -7,16 +7,16 @@ _ca_bhfuil_completion() {
 
     # Main commands
     local commands="config search status"
-    
+
     # Config subcommands
     local config_commands="init validate status show"
-    
+
     # Config show options
     local config_show_options="--repos --global --auth --all --format"
-    
+
     # Format options
     local format_options="yaml json"
-    
+
     # Global options
     local global_options="--version --help --install-completion --show-completion"
 
@@ -55,7 +55,7 @@ _ca_bhfuil_completion() {
                             local have_global=0
                             local have_auth=0
                             local have_all=0
-                            
+
                             for word in "${words[@]}"; do
                                 case "$word" in
                                     --repos) have_repos=1 ;;
@@ -64,7 +64,7 @@ _ca_bhfuil_completion() {
                                     --all) have_all=1 ;;
                                 esac
                             done
-                            
+
                             # If --all is present, only offer format and help
                             if [ $have_all -eq 1 ]; then
                                 COMPREPLY=($(compgen -W "--format --help" -- "$cur"))
@@ -137,7 +137,7 @@ complete -F _ca_bhfuil_completion ca-bhfuil
 _python_ca_bhfuil_completion() {
     local cur prev words cword
     _init_completion || return
-    
+
     # Check if this is python -m ca_bhfuil
     if [[ "${words[1]}" == "-m" && "${words[2]}" == "ca_bhfuil" ]]; then
         # Shift words to remove "python -m ca_bhfuil" and call main completion
