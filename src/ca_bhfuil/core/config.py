@@ -1,36 +1,36 @@
 """Configuration management for ca-bhfuil with XDG Base Directory compliance."""
 
 import os
-from pathlib import Path
-from typing import Any
+import pathlib
+import typing  # Any
 
+import pydantic  # BaseModel, Field, field_validator
 import yaml
-from pydantic import BaseModel, Field, field_validator
 
 
 # XDG Base Directory utilities
-def get_config_dir() -> Path:
+def get_config_dir() -> pathlib.Path:
     """Get XDG_CONFIG_HOME compliant config directory."""
     xdg_config = os.environ.get("XDG_CONFIG_HOME")
     if xdg_config:
-        return Path(xdg_config) / "ca-bhfuil"
-    return Path.home() / ".config" / "ca-bhfuil"
+        return pathlib.Path(xdg_config) / "ca-bhfuil"
+    return pathlib.Path.home() / ".config" / "ca-bhfuil"
 
 
-def get_state_dir() -> Path:
+def get_state_dir() -> pathlib.Path:
     """Get XDG_STATE_HOME compliant state directory."""
     xdg_state = os.environ.get("XDG_STATE_HOME")
     if xdg_state:
-        return Path(xdg_state) / "ca-bhfuil"
-    return Path.home() / ".local" / "state" / "ca-bhfuil"
+        return pathlib.Path(xdg_state) / "ca-bhfuil"
+    return pathlib.Path.home() / ".local" / "state" / "ca-bhfuil"
 
 
-def get_cache_dir() -> Path:
+def get_cache_dir() -> pathlib.Path:
     """Get XDG_CACHE_HOME compliant cache directory."""
     xdg_cache = os.environ.get("XDG_CACHE_HOME")
     if xdg_cache:
-        return Path(xdg_cache) / "ca-bhfuil"
-    return Path.home() / ".cache" / "ca-bhfuil"
+        return pathlib.Path(xdg_cache) / "ca-bhfuil"
+    return pathlib.Path.home() / ".cache" / "ca-bhfuil"
 
 
 def setup_secure_directories() -> None:
@@ -51,15 +51,15 @@ def setup_secure_directories() -> None:
 
 
 # Repository configuration models
-class RemoteConfig(BaseModel):
+class RemoteConfig(pydantic.BaseModel):
     """Configuration for a git remote."""
 
     name: str
     url: str
-    fetch_refs: list[str] = Field(default_factory=lambda: ["refs/heads/*"])
+    fetch_refs: list[str] = pydantic.Field(default_factory=lambda: ["refs/heads/*"])
 
 
-class AuthMethod(BaseModel):
+class AuthMethod(pydantic.BaseModel):
     """Authentication method for git operations."""
 
     type: str = "ssh_key"  # ssh_key, token, credential_helper
@@ -70,14 +70,14 @@ class AuthMethod(BaseModel):
     credential_helper: str | None = None
 
 
-class BranchConfig(BaseModel):
+class BranchConfig(pydantic.BaseModel):
     """Branch filtering configuration."""
 
-    patterns: list[str] = Field(default_factory=lambda: ["*"])
-    exclude_patterns: list[str] = Field(default_factory=list)
+    patterns: list[str] = pydantic.Field(default_factory=lambda: ["*"])
+    exclude_patterns: list[str] = pydantic.Field(default_factory=list)
     max_branches: int = 100
 
-    @field_validator("patterns")
+    @pydantic.field_validator("patterns")
     @classmethod
     def validate_patterns(cls, v: list[str]) -> list[str]:
         """Validate glob patterns."""
@@ -92,7 +92,7 @@ class BranchConfig(BaseModel):
         return v
 
 
-class SyncConfig(BaseModel):
+class SyncConfig(pydantic.BaseModel):
     """Repository synchronization configuration."""
 
     strategy: str = "fetch_all"  # fetch_all, fetch_recent, manual
@@ -101,7 +101,7 @@ class SyncConfig(BaseModel):
     prune_deleted: bool = True
 
 
-class StorageConfig(BaseModel):
+class StorageConfig(pydantic.BaseModel):
     """Repository storage configuration."""
 
     type: str = "bare"  # bare, full
@@ -109,15 +109,15 @@ class StorageConfig(BaseModel):
     retention_days: int = 365
 
 
-class RepositoryConfig(BaseModel):
+class RepositoryConfig(pydantic.BaseModel):
     """Configuration for a single repository."""
 
     name: str
-    source: dict[str, Any]  # URL, type
-    remotes: list[RemoteConfig] = Field(default_factory=list)
-    branches: BranchConfig = Field(default_factory=BranchConfig)
-    sync: SyncConfig = Field(default_factory=SyncConfig)
-    storage: StorageConfig = Field(default_factory=StorageConfig)
+    source: dict[str, typing.Any]  # URL, type
+    remotes: list[RemoteConfig] = pydantic.Field(default_factory=list)
+    branches: BranchConfig = pydantic.Field(default_factory=BranchConfig)
+    sync: SyncConfig = pydantic.Field(default_factory=SyncConfig)
+    storage: StorageConfig = pydantic.Field(default_factory=StorageConfig)
     auth_key: str | None = None  # Reference to auth.yaml entry
 
     @property
@@ -128,28 +128,28 @@ class RepositoryConfig(BaseModel):
         return url_to_path(self.source["url"])
 
     @property
-    def repo_path(self) -> Path:
+    def repo_path(self) -> pathlib.Path:
         """Get full path to git repository (cache)."""
         return get_cache_dir() / "repos" / self.url_path
 
     @property
-    def state_path(self) -> Path:
+    def state_path(self) -> pathlib.Path:
         """Get full path to state directory."""
         return get_state_dir() / self.url_path
 
 
-class GlobalConfig(BaseModel):
+class GlobalConfig(pydantic.BaseModel):
     """Global repository configuration."""
 
     version: str = "1.0"
-    repos: list[RepositoryConfig] = Field(default_factory=list)
-    settings: dict[str, Any] = Field(default_factory=dict)
+    repos: list[RepositoryConfig] = pydantic.Field(default_factory=list)
+    settings: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 class ConfigManager:
     """Manages repository configuration loading and validation."""
 
-    def __init__(self, config_dir: Path | None = None):
+    def __init__(self, config_dir: pathlib.Path | None = None):
         """Initialize configuration manager."""
         self.config_dir = config_dir or get_config_dir()
         self.repositories_file = self.config_dir / "repos.yaml"

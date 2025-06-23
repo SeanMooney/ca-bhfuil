@@ -1,10 +1,11 @@
 """Test repository fixtures for ca-bhfuil testing."""
 
+import collections.abc
+from datetime import datetime
+from datetime import timezone
+import pathlib
 import shutil
 import tempfile
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Generator
 
 import pygit2
 import pytest
@@ -13,7 +14,7 @@ import pytest
 class TestRepository:
     """A test git repository with known commit history."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: pathlib.Path):
         """Initialize test repository."""
         self.path = path
         self.repo = pygit2.init_repository(str(path))
@@ -55,10 +56,7 @@ class TestRepository:
 
     def create_branch(self, name: str, from_commit: str | None = None) -> None:
         """Create a new branch."""
-        if from_commit:
-            commit = self.repo.get(from_commit)
-        else:
-            commit = self.repo.head.peel()
+        commit = self.repo.get(from_commit) if from_commit else self.repo.head.peel()
 
         self.repo.branches.local.create(name, commit)
 
@@ -72,10 +70,7 @@ class TestRepository:
         self, name: str, message: str = "", commit: str | None = None
     ) -> None:
         """Create a tag."""
-        if commit:
-            target = self.repo.get(commit)
-        else:
-            target = self.repo.head.peel()
+        target = self.repo.get(commit) if commit else self.repo.head.peel()
 
         if message:
             self.repo.create_tag(name, target, self.signature, message)
@@ -88,14 +83,14 @@ class TestRepository:
 
 
 @pytest.fixture
-def temp_git_dir() -> Generator[Path, None, None]:
+def temp_git_dir() -> collections.abc.Generator[pathlib.Path, None, None]:
     """Provide a temporary directory for git operations."""
     with tempfile.TemporaryDirectory() as tmp_dir:
-        yield Path(tmp_dir)
+        yield pathlib.Path(tmp_dir)
 
 
 @pytest.fixture
-def minimal_repo(temp_git_dir: Path) -> TestRepository:
+def minimal_repo(temp_git_dir: pathlib.Path) -> TestRepository:
     """Create a minimal repository with a single commit."""
     repo = TestRepository(temp_git_dir / "minimal")
     repo.add_file("README.md", "# Minimal Test Repository\n")
@@ -104,7 +99,7 @@ def minimal_repo(temp_git_dir: Path) -> TestRepository:
 
 
 @pytest.fixture
-def multi_branch_repo(temp_git_dir: Path) -> TestRepository:
+def multi_branch_repo(temp_git_dir: pathlib.Path) -> TestRepository:
     """Create a repository with multiple branches and commits."""
     repo = TestRepository(temp_git_dir / "multi_branch")
 
@@ -143,7 +138,7 @@ def multi_branch_repo(temp_git_dir: Path) -> TestRepository:
 
 
 @pytest.fixture
-def tagged_repo(temp_git_dir: Path) -> TestRepository:
+def tagged_repo(temp_git_dir: pathlib.Path) -> TestRepository:
     """Create a repository with tags."""
     repo = TestRepository(temp_git_dir / "tagged")
 
@@ -168,7 +163,7 @@ def tagged_repo(temp_git_dir: Path) -> TestRepository:
 
 
 @pytest.fixture
-def complex_history_repo(temp_git_dir: Path) -> TestRepository:
+def complex_history_repo(temp_git_dir: pathlib.Path) -> TestRepository:
     """Create a repository with complex history including merges."""
     repo = TestRepository(temp_git_dir / "complex")
 
@@ -208,7 +203,7 @@ def complex_history_repo(temp_git_dir: Path) -> TestRepository:
 
 
 @pytest.fixture
-def empty_repo(temp_git_dir: Path) -> TestRepository:
+def empty_repo(temp_git_dir: pathlib.Path) -> TestRepository:
     """Create an empty repository."""
     return TestRepository(temp_git_dir / "empty")
 
@@ -244,7 +239,7 @@ def os_vif_config() -> dict:
     return REAL_WORLD_REPOS["os-vif"]
 
 
-def create_test_repo_config(repo_url: str, local_path: Path) -> dict:
+def create_test_repo_config(repo_url: str, local_path: pathlib.Path) -> dict:
     """Create a repository configuration for testing."""
     return {
         "url": repo_url,
@@ -255,7 +250,7 @@ def create_test_repo_config(repo_url: str, local_path: Path) -> dict:
     }
 
 
-def cleanup_test_repos(base_path: Path) -> None:
+def cleanup_test_repos(base_path: pathlib.Path) -> None:
     """Clean up test repositories."""
     if base_path.exists():
         shutil.rmtree(base_path)

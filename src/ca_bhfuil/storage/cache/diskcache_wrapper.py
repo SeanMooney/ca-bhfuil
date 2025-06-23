@@ -1,29 +1,29 @@
 """Disk cache wrapper for ca-bhfuil."""
 
+import datetime
 import json
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any
+import pathlib
+import typing
 
 import diskcache as dc
 from loguru import logger
 
-from ca_bhfuil.core.config import get_cache_dir
+from ca_bhfuil.core import config
 
 
 class CacheManager:
     """High-level cache manager using diskcache."""
 
-    def __init__(self, cache_dir: Path | None = None) -> None:
+    def __init__(self, cache_dir: pathlib.Path | None = None) -> None:
         """Initialize the cache manager.
 
         Args:
             cache_dir: Optional cache directory override
         """
-        settings = get_settings()
+        settings = config.get_settings()
         self.cache_dir = cache_dir or settings.cache.directory
         self.max_size_bytes = settings.cache.max_size_mb * 1024 * 1024
-        self.default_ttl = timedelta(hours=settings.cache.default_ttl_hours)
+        self.default_ttl = datetime.timedelta(hours=settings.cache.default_ttl_hours)
 
         # Ensure cache directory exists
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +36,7 @@ class CacheManager:
 
         logger.debug(f"Initialized cache at {self.cache_dir}")
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: typing.Any = None) -> typing.Any:
         """Get value from cache.
 
         Args:
@@ -52,7 +52,9 @@ class CacheManager:
             logger.warning(f"Cache get error for key '{key}': {e}")
             return default
 
-    def set(self, key: str, value: Any, ttl: int | timedelta | None = None) -> bool:
+    def set(
+        self, key: str, value: typing.Any, ttl: int | datetime.timedelta | None = None
+    ) -> bool:
         """Set value in cache.
 
         Args:
@@ -65,11 +67,11 @@ class CacheManager:
         """
         try:
             if isinstance(ttl, int):
-                ttl = timedelta(seconds=ttl)
+                ttl = datetime.timedelta(seconds=ttl)
             elif ttl is None:
                 ttl = self.default_ttl
 
-            expire_time = datetime.now() + ttl
+            expire_time = datetime.datetime.now() + ttl
             return self._cache.set(key, value, expire=expire_time.timestamp())
         except Exception as e:
             logger.warning(f"Cache set error for key '{key}': {e}")
@@ -98,7 +100,7 @@ class CacheManager:
         except Exception as e:
             logger.error(f"Cache clear error: {e}")
 
-    def stats(self) -> dict[str, Any]:
+    def stats(self) -> dict[str, typing.Any]:
         """Get cache statistics.
 
         Returns:
@@ -139,8 +141,12 @@ class CacheManager:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self, exc_type: typing.Any, exc_val: typing.Any, exc_tb: typing.Any
+    ) -> None:
         """Context manager exit."""
+        # Parameters are required by context manager protocol but not used
+        del exc_type, exc_val, exc_tb
         self.close()
 
 
@@ -171,7 +177,7 @@ def cache_git_operation(repo_path: str, operation: str, *args: str) -> str:
     return cache_manager.cache_key("git", repo_path, operation, *args)
 
 
-def cache_api_request(url: str, params: dict[str, Any] | None = None) -> str:
+def cache_api_request(url: str, params: dict[str, typing.Any] | None = None) -> str:
     """Generate cache key for API requests.
 
     Args:
