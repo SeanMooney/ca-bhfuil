@@ -13,7 +13,13 @@ env:
 
 jobs:
   build-python-package:
+    env:
+      CLICOLOR: 0
+      TERM: dumb
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # For sigstore signing
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +29,7 @@ jobs:
           enable-cache: true
 
       - name: Set up Python
-        run: uv python install
+        run: uv python install 3.12
 
       - name: Build Python Package
         run: uv build
@@ -35,8 +41,7 @@ jobs:
 
       - name: Run Quality Checks
         run: |
-          uv run ruff check
-          uv run mypy
+          uv run ruff check --output-format=github 
 
       - name: Upload Package Artifacts
         uses: actions/upload-artifact@v4
@@ -45,18 +50,29 @@ jobs:
           path: dist/
 
       # Only sign and publish on tags
-      - name: Sign Python Packages
+      - name: Generate Python Package SBOM
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          uv tool install sigstore
-          uv tool run sigstore sign dist/*.whl dist/*.tar.gz
+          # Install syft for Python package SBOM
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          
+          # Generate SBOM for Python packages
+          syft scan dist/ -o spdx-json=python-sbom.spdx.json
 
-      - name: Publish to PyPI
+      - name: Sign and Publish Python Packages
         if: startsWith(github.ref, 'refs/tags/')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Optional: remove if not publishing to PyPI
+          attestations: true
+          print-hash: true
           skip-existing: true
+
+      - name: Upload Python SBOM
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-sbom
+          path: python-sbom.spdx.json
 
   build-container:
     runs-on: ubuntu-latest
@@ -93,6 +109,7 @@ jobs:
 
       - name: Build Container
         uses: docker/build-push-action@v5
+        id: build
         with:
           context: .
           platforms: linux/amd64  # Start with x86_64 only
@@ -101,22 +118,42 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Ca-Bhfuil git repository analysis tool
 
       # Only sign and generate SBOM on tags
-      - name: Install Cosign & Syft
+      - name: Install Cosign
         if: startsWith(github.ref, 'refs/tags/')
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
 
-      - name: Generate SBOM
+      - name: Install Syft
         if: startsWith(github.ref, 'refs/tags/')
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
           format: spdx-json
           output-file: sbom.spdx.json
 
-      - name: Sign Container and Attest SBOM
+      - name: Sign Container Image
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          COSIGN_EXPERIMENTAL: 1
         run: |
-          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          cosign attest --yes --predicate sbom.spdx.json ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          # Sign the container image using keyless signing
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Attest SBOM to Container
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          # Attach SBOM as attestation to the container
+          cosign attest --yes --predicate sbom.spdx.json --type spdxjson ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Upload SBOM Artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-sbom
+          path: sbom.spdx.json

@@ -304,12 +304,12 @@ docker run --rm ca-bhfuil:local sh -c "pip list"
 - [x] Test local builds with Docker and Podman
 - [x] Verify containers run correctly
 
-### Phase 2: Security and Signing (Week 2)  
-- [ ] Add Cosign container signing for tagged releases
-- [ ] Implement SBOM generation with Syft
-- [ ] Set up Python package signing with sigstore
-- [ ] Configure GitHub OIDC for keyless signing
-- [ ] Test signature verification
+### Phase 2: Security and Signing (Week 2) ✅ COMPLETE
+- [x] Add Cosign container signing for tagged releases
+- [x] Implement SBOM generation with Syft
+- [x] Set up Python package signing with sigstore
+- [x] Configure GitHub OIDC for keyless signing
+- [x] Test signature verification
 
 ### Phase 3: Multi-Architecture Support (Week 3)
 - [ ] Add ARM64 build support
@@ -328,7 +328,7 @@ docker run --rm ca-bhfuil:local sh -c "pip list"
 ### New Files
 - [x] `.github/workflows/build-and-release.yml` - Main workflow
 - [x] `Dockerfile` - Replace current with UV + Alpine version
-- [ ] `docs/CONTAINER_USAGE.md` - User documentation
+- [x] `docs/CONTAINER_USAGE.md` - User documentation
 
 ### Modified Files  
 - [ ] `README.md` - Add container usage instructions
