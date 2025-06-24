@@ -6,12 +6,12 @@
 
 ## Executive Summary
 
-Ca-Bhfuil implements a **streamlined OCI container strategy** using Google's distroless base images with conditional signing and publishing. This approach prioritizes **security**, **minimal attack surface**, and **maintainability** while providing continuous build validation and release automation.
+Ca-Bhfuil implements a **streamlined OCI container strategy** using UV for fast builds and Alpine Linux for the runtime with conditional signing and publishing. This approach prioritizes **security**, **performance**, and **maintainability** while providing continuous build validation and release automation.
 
 ### Key Objectives
-- **🔒 Minimal Attack Surface**: Distroless base images with no shell or package manager
+- **🔒 Minimal Attack Surface**: Alpine runtime with non-root user and minimal dependencies
 - **📦 OCI Compliance**: Works with Docker, Podman, and any OCI-compatible tool
-- **🚀 Continuous Validation**: Build and test on every merge, sign and publish on tags
+- **🚀 Fast Builds**: UV for rapid dependency resolution and package building
 - **🌍 Multi-Platform**: Primary x86_64 support with ARM64 secondary
 - **📋 Basic Security**: Python dependency SBOM and container signing on releases
 
@@ -48,8 +48,8 @@ graph TB
 
 | Component | Selected Technology | Rationale |
 |-----------|-------------------|-----------|
-| **Base Image** | `gcr.io/distroless/python3:3.12` | Minimal attack surface, no shell/package manager |
-| **Build Strategy** | Multi-stage OCI (Alpine builder + Distroless runtime) | Best of both worlds: build tools + secure runtime |
+| **Base Image** | `python:3.12-alpine` | Minimal attack surface, small size, essential tools |
+| **Build Strategy** | Multi-stage OCI (UV builder + Alpine runtime) | Fast builds with UV, secure Alpine runtime |
 | **Registry** | GitHub Container Registry only | Integrated with repository, no vendor lock-in |
 | **Signing** | Cosign with GitHub OIDC | Industry standard, no key management |
 | **SBOM** | Syft (Python dependencies only) | Simple, focused scope |
@@ -66,40 +66,40 @@ graph TB
 
 ### Multi-Stage Dockerfile Design
 
-**Stage 1: Builder (Alpine-based)**
+**Stage 1: Builder (UV-based)**
 ```dockerfile
-FROM python:3.12-alpine as builder
+FROM ghcr.io/astral-sh/uv:python3.12-alpine as builder
 # Install build dependencies (gcc, libgit2-dev, etc.)
-# Build Python package with uv
-# Compile any native dependencies
+# Build Python package with UV for fast dependency resolution
+# Compile any native dependencies in virtual environment
 ```
 
-**Stage 2: Runtime (Distroless)**
+**Stage 2: Runtime (Alpine-based)**
 ```dockerfile
-FROM gcr.io/distroless/python3:3.12
-# Copy only built Python package
-# No shell, no package manager, minimal OS
-# Run as nonroot user
+FROM python:3.12-alpine as runtime
+# Install only runtime dependencies (libgit2, git)
+# Copy virtual environment from builder
+# Run as nonroot user (UID 65532)
 ```
 
 ### Security Features
 
-1. **Distroless Runtime**
-   - No shell or package manager in final image
-   - Minimal OS surface area
-   - Google-maintained and regularly updated
-   - Cryptographically signed base images
+1. **Minimal Alpine Runtime**
+   - Minimal OS surface area with Alpine Linux
+   - Only essential runtime dependencies (libgit2, git)
+   - Regular security updates from Alpine team
+   - Optimized for container environments
 
 2. **Reproducible Builds**
    - Specific Python version (3.12)
-   - Digest-pinned base images
+   - UV-based fast and deterministic dependency resolution
    - Locked Python dependencies via uv.lock
-   - Deterministic build process
+   - Multi-stage build process
 
 3. **Non-Root Execution**
-   - Uses distroless `nonroot` user (UID 65532)
+   - Custom `nonroot` user (UID 65532)
    - No privilege escalation possible
-   - Read-only filesystem where applicable
+   - Secure virtual environment isolation
 
 ## GitHub Actions Workflow Design
 
@@ -281,26 +281,28 @@ docker buildx build --platform linux/amd64,linux/arm64 -t ca-bhfuil:multiarch .
 
 ### Debugging
 
-Since the final image is distroless (no shell), debugging requires:
+Since the final image is Alpine-based, debugging is straightforward:
 
 ```bash
-# Use debug variant of distroless for troubleshooting
-# Modify Dockerfile temporarily:
-# FROM gcr.io/distroless/python3:3.12-debug
+# Debug the runtime image directly
+docker run -it --rm --entrypoint sh ca-bhfuil:local
 
 # Or inspect the builder stage
 docker build --target builder -t ca-bhfuil:debug .
 docker run -it --rm ca-bhfuil:debug sh
+
+# Check installed packages
+docker run --rm ca-bhfuil:local sh -c "pip list"
 ```
 
 ## Implementation Roadmap
 
-### Phase 1: Basic Container Build (Week 1)
-- [ ] Create distroless-based Dockerfile
-- [ ] Set up GitHub Actions workflow with conditional logic
-- [ ] Implement basic multi-stage build (Alpine → Distroless)
-- [ ] Test local builds with Docker and Podman
-- [ ] Verify containers run correctly
+### Phase 1: Basic Container Build (Week 1) ✅ COMPLETE
+- [x] Create UV + Alpine-based Dockerfile
+- [x] Set up GitHub Actions workflow with conditional logic
+- [x] Implement basic multi-stage build (UV builder → Alpine runtime)
+- [x] Test local builds with Docker and Podman
+- [x] Verify containers run correctly
 
 ### Phase 2: Security and Signing (Week 2)  
 - [ ] Add Cosign container signing for tagged releases
@@ -324,8 +326,8 @@ docker run -it --rm ca-bhfuil:debug sh
 ## File Changes Required
 
 ### New Files
-- [ ] `.github/workflows/build-and-release.yml` - Main workflow
-- [ ] `Dockerfile` - Replace current with distroless version
+- [x] `.github/workflows/build-and-release.yml` - Main workflow
+- [x] `Dockerfile` - Replace current with UV + Alpine version
 - [ ] `docs/CONTAINER_USAGE.md` - User documentation
 
 ### Modified Files  
@@ -349,7 +351,7 @@ docker run -it --rm ca-bhfuil:debug sh
 - ✅ Containers are signed on tagged releases
 - ✅ SBOM generation works and includes Python dependencies
 - ✅ Signatures can be verified with GitHub identity
-- ✅ No shell or package manager in final image
+- ✅ Non-root execution with minimal runtime dependencies
 
 ### Workflow Verification
 - ✅ Builds run on merge (no publish)
