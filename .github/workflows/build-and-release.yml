@@ -112,12 +112,13 @@ jobs:
         id: build
         with:
           context: .
-          platforms: linux/amd64  # Start with x86_64 only
+          platforms: linux/amd64,linux/arm64  # Multi-architecture support
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false  # Disable provenance for faster multi-arch builds
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Ca-Bhfuil git repository analysis tool
 
       # Only sign and generate SBOM on tags
