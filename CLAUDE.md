@@ -6,6 +6,8 @@
 
 **Ca-Bhfuil** *(pronounced "caw will")* is a git repository analysis tool for open source maintainers, currently in the **core implementation phase**.
 
+**Canonical Repository**: https://github.com/SeanMooney/ca-bhfuil
+
 - ✅ **Design Complete**: Project vision, technology stack, and architecture defined
 - ✅ **Structure Ready**: Repository organization and AI memory system established
 - ✅ **Bootstrap Complete**: Python package structure implemented and functional
