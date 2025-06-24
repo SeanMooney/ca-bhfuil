@@ -4,6 +4,13 @@
 
 **Cá Bhfuil** *(pronounced "caw will")* helps open source maintainers track patches, fixes, and features across their stable branches.
 
+[![Continuous Integration](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml)
+[![Build and Release](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/build-and-release.yml)
+[![Dependency Management](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/deps.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/deps.yml)
+[![Release](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/release.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/release.yml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/SeanMooney/ca-bhfuil/master.svg)](https://results.pre-commit.ci/latest/github/SeanMooney/ca-bhfuil/master)
+
+
 ## The Problem
 
 - "Did CVE-2024-1234 get backported to all supported stable branches?"

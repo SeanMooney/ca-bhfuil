@@ -37,7 +37,7 @@ RUN uv build
 RUN uv pip install dist/*.whl
 
 # ============================================================================
-# Stage 2: Runtime - Minimal Alpine image 
+# Stage 2: Runtime - Minimal Alpine image
 # ============================================================================
 FROM python:3.12-alpine AS runtime
 

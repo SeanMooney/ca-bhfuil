@@ -54,10 +54,12 @@ repos:
         additional_dependencies:
           - types-PyYAML
           - types-requests
+          - types-pygments
           - pydantic
           - typer
           - loguru-mypy
-        args: [--strict, --show-error-codes, --no-error-summary, --install-types]
+          - pygit2
+        args: [--strict, --show-error-codes, --no-error-summary]
         exclude: ^(tests/|scripts/)
 
   # Bash script linting

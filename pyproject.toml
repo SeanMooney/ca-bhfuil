@@ -170,6 +170,7 @@ warn_unreachable = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 show_error_codes = true
+install_types = false
 
 [[tool.mypy.overrides]]
 module = [
@@ -180,6 +181,14 @@ module = [
     "loguru.*",
 ]
 ignore_missing_imports = true
+disallow_untyped_calls = false
+
+# Additional override for pygit2 to ignore all typing issues
+[[tool.mypy.overrides]]
+module = "pygit2"
+ignore_errors = true
+ignore_missing_imports = true
+disallow_untyped_calls = false
 
 # Pytest configuration
 [tool.pytest.ini_options]
@@ -209,6 +218,7 @@ dev-dependencies = [
     "mypy>=1.5.0",
     "pre-commit>=3.4.0",
     "types-pyyaml>=6.0.12.20250516",
+    "types-pygments>=2.17.0",
     "pytest-cov>=6.2.1",
 ]
 
