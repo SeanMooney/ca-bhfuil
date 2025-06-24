@@ -69,3 +69,10 @@ ai/session-logs/
 # Development artifacts
 .ruff_cache/
 .pre-commit-cache/
+
+# Development caches
+.uv-cache/
+.mypy_cache/
+
+# Environment files
+.env.local

@@ -49,7 +49,7 @@ This project uses **Human + AI collaborative development**:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ca-bhfuil.git
+git clone https://github.com/SeanMooney/ca-bhfuil.git
 cd ca-bhfuil
 
 # For AI development (Claude Code, etc.)

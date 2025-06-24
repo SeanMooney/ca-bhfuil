@@ -75,9 +75,9 @@ text-processing = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/seandstewart/ca-bhfuil"
-Repository = "https://github.com/seandstewart/ca-bhfuil"
-Issues = "https://github.com/seandstewart/ca-bhfuil/issues"
+Homepage = "https://github.com/SeanMooney/ca-bhfuil"
+Repository = "https://github.com/SeanMooney/ca-bhfuil"
+Issues = "https://github.com/SeanMooney/ca-bhfuil/issues"
 
 [project.scripts]
 ca-bhfuil = "ca_bhfuil.cli.main:app"
