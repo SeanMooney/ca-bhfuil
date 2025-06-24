@@ -106,7 +106,8 @@
 1. **Repository Cloning/Syncing** - Full repository lifecycle management
 2. **Basic Search Implementation** - SHA and pattern-based commit search
 3. **Analysis Engine** - Commit analysis and branch tracking
-4. **Performance Optimization** - Caching and concurrent operations
+4. **Async Conversion** - Implementation per `ai/memory/async-conversion-tasks.md`
+5. **Performance Optimization** - Caching and concurrent operations
 
 ## Key Design Decisions Documented
 
