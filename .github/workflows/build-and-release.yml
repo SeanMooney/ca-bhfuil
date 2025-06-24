@@ -41,7 +41,7 @@ jobs:
 
       - name: Run Quality Checks
         run: |
-          uv run ruff check --output-format=github 
+          uv run ruff check --output-format=github
 
       - name: Upload Package Artifacts
         uses: actions/upload-artifact@v4
@@ -55,7 +55,7 @@ jobs:
         run: |
           # Install syft for Python package SBOM
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-          
+
           # Generate SBOM for Python packages
           syft scan dist/ -o spdx-json=python-sbom.spdx.json
 

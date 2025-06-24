@@ -206,7 +206,7 @@ class RepositoryCloner:
         checkout_branch: str | None = None  # Clone all branches
 
         # Set up remote callbacks
-        remote_callbacks = pygit2.RemoteCallbacks()
+        remote_callbacks = pygit2.RemoteCallbacks()  # type: ignore[attr-defined, no-untyped-call]
 
         # Set progress callback (method, not constructor parameter)
         if hasattr(remote_callbacks, "progress"):
