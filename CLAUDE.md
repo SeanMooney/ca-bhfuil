@@ -45,9 +45,14 @@ ai/memory/
 ### Complete Documentation
 ```
 docs/design/
-├── project-vision.md          # Complete technical vision and user workflows
-├── technology-stack.md        # All technology decisions with rationale
-└── repository-structure.md    # Full development organization guide
+├── project-vision.md            # Product vision and user goals
+├── architecture-overview.md     # System design and components
+├── technology-decisions.md      # Technology choices and rationale
+├── cli-design-patterns.md       # CLI design principles and conventions
+├── data-storage-design.md       # Storage architecture and data management
+├── repository-management.md     # Git operations and repository management
+├── development-workflow.md      # CI/CD and development process
+└── archive/                     # Previous design documents (archived)
 ```
 
 ## Development Workflow
@@ -61,7 +66,7 @@ docs/design/
 ### When Ready to Begin Development
 1. **Check `ai/memory/current-focus.md`** for current priorities
 2. **Follow tasks in `ai/memory/bootstrap-tasks.md`** for implementation steps
-3. **Reference technology stack** in `docs/design/technology-stack.md`
+3. **Reference technology decisions** in `docs/design/technology-decisions.md`
 4. **ALWAYS follow coding guidelines** in `ai/memory/ai-style-guide.md`
 5. **Update memory files** as you make progress and decisions
 
@@ -139,7 +144,7 @@ ca-bhfuil/
 - ✅ **Design Phase**: Complete git repository management architecture
 
 ### Design Phase Achievements (2025-01-21)
-- ✅ **Git Repository Management Design**: Complete architecture in `docs/design/git-repository-management.md`
+- ✅ **Git Repository Management Design**: Complete architecture in `docs/design/repository-management.md`
 - ✅ **XDG Base Directory Compliance**: Linux standards-compliant data storage
 - ✅ **Security Architecture**: SSH-first authentication with separate config files
 - ✅ **CLI Pattern**: Consistent `ca-bhfuil <resource> <operation> [--options]` interface

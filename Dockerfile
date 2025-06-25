@@ -1,5 +1,5 @@
 # Multi-stage build: UV builder + Alpine runtime
-# Based on packaging design in docs/design/packaging.md
+# Based on packaging design in docs/design/development-workflow.md
 
 # ============================================================================
 # Stage 1: Builder - Use UV image for fast Python builds

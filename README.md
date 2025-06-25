@@ -40,9 +40,10 @@ ca-bhfuil --missing-from stable/v2.1 # What needs backporting
 
 ## Documentation
 
-- 📖 **[Project Vision](docs/design/project-vision.md)** - Complete technical vision and roadmap
-- 🛠️ **[Technology Stack](docs/design/technology-stack.md)** - Technology decisions and rationale  
-- 🏗️ **[Repository Structure](docs/design/repository-structure.md)** - Development organization
+- 📖 **[Project Vision](docs/design/project-vision.md)** - Product vision and user goals
+- 🏗️ **[Architecture Overview](docs/design/architecture-overview.md)** - System design and components
+- 🛠️ **[Technology Decisions](docs/design/technology-decisions.md)** - Technology choices and rationale
+- 🔧 **[Development Workflow](docs/design/development-workflow.md)** - CI/CD and development process
 
 ## AI-Assisted Development
 
