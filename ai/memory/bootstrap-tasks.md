@@ -277,7 +277,7 @@ The bootstrap phase is complete when:
 
 ## Notes for Claude Code
 
-- **Follow technology stack strictly** - use only dependencies listed in docs/design/technology-stack.md
+- **Follow technology decisions strictly** - use only dependencies listed in docs/design/technology-decisions.md
 - **Implement incrementally** - each task should result in working, testable code
 - **Update memory files** - document decisions and progress in ai/memory/
 - **Focus on fundamentals** - get basic functionality solid before adding features
