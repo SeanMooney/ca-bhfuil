@@ -4,12 +4,8 @@
 
 **Cá Bhfuil** *(pronounced "caw will")* helps open source maintainers track patches, fixes, and features across their stable branches.
 
-[![Continuous Integration](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml)
-[![Build and Release](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/build-and-release.yml)
-[![Dependency Management](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/deps.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/deps.yml)
-[![Release](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/release.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/release.yml)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/SeanMooney/ca-bhfuil/master.svg)](https://results.pre-commit.ci/latest/github/SeanMooney/ca-bhfuil/master)
-
+[![CI](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml/badge.svg)](https://github.com/SeanMooney/ca-bhfuil/actions/workflows/ci.yml)
+[![pre-commit.ci](https://results.pre-commit.ci/badge/github/SeanMooney/ca-bhfuil/master.svg)](https://results.pre-commit.ci/latest/github/SeanMooney/ca-bhfuil/master)
 
 ## The Problem
 
@@ -25,53 +21,46 @@ ca-bhfuil abc123def --distribution  # See where this commit landed
 ca-bhfuil --missing-from stable/v2.1 # What needs backporting
 ```
 
-## Project Status
-
-**Current Phase**: Initial development and repository setup  
-**License**: MIT  
-**Development Model**: Single developer + AI assistance
-
-## Key Features (Planned)
+## Key Features
 
 - **🚀 Performance First**: 10x+ faster than GitPython using pygit2
 - **🔒 Local-First**: SQLite storage, no external databases
 - **🧠 AI-Enhanced**: Local LLM integration with privacy controls
 - **🎯 Maintainer-Focused**: Built for real stable branch workflows
 
-## Documentation
-
-- 📖 **[Project Vision](docs/design/project-vision.md)** - Product vision and user goals
-- 🏗️ **[Architecture Overview](docs/design/architecture-overview.md)** - System design and components
-- 🛠️ **[Technology Decisions](docs/design/technology-decisions.md)** - Technology choices and rationale
-- 🔧 **[Development Workflow](docs/design/development-workflow.md)** - CI/CD and development process
-
-## AI-Assisted Development
-
-This project uses **Human + AI collaborative development**:
-
-- **🤖 For AI Assistants**: See [CLAUDE.md](CLAUDE.md) for development setup
-- **📁 AI Memory System**: Persistent context in `ai/memory/` directory
-- **🔄 Session Continuity**: File-based memory survives development sessions
-
-## Quick Setup for Development
+## Quick Start
 
 ```bash
-# Clone repository
-git clone https://github.com/SeanMooney/ca-bhfuil.git
-cd ca-bhfuil
+# Install from PyPI (when available)
+pip install ca-bhfuil
 
-# For AI development (Claude Code, etc.)
-# Read CLAUDE.md and ai/memory/ files for context
+# Or run with container
+docker run --rm -v $(pwd):/workspace ghcr.io/seanmooney/ca-bhfuil:latest --help
 ```
 
-## Philosophy
+## Documentation
 
-*"Because tracking changes across stable branches shouldn't require a computer science degree."*
+### For Users
+- **[Container Usage Guide](docs/user/CONTAINER_USAGE.md)** - Complete container usage and security
+- **[CLI Reference](docs/user/cli-reference.md)** - Command-line interface documentation
 
-**A pragmatic tool built by a maintainer, for maintainers who just want to know where their fixes landed.**
+### For Contributors  
+- **[Development Setup](docs/contributor/DEVELOPMENT.md)** - Local development environment
+- **[Code Style Guide](docs/contributor/code-style.md)** - Coding standards and practices
+- **[Design Documents](docs/contributor/design/)** - Technical architecture and decisions
+
+### For AI Assistants
+- **[CLAUDE.md](CLAUDE.md)** - AI development setup and project context
+- **[AI Memory System](ai/memory/)** - Persistent context across development sessions
+
+## Project Status
+
+**Current Phase**: Core development (CLI, configuration, git operations)  
+**License**: MIT  
+**Development Model**: Human + AI collaborative development
 
 ---
 
-**License**: MIT  
-**Pronunciation**: "caw will" (Irish: where is)  
-**Status**: Repository structure and planning complete, ready for development bootstrap
+*"Because tracking changes across stable branches shouldn't require a computer science degree."*
+
+**Built by a maintainer, for maintainers who just want to know where their fixes landed.**

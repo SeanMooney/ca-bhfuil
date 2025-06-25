@@ -2,9 +2,9 @@
 
 > **Condensed style guide for AI assistants working on Ca-Bhfuil**
 >
-> **Last Updated**: 2025-01-23 (Sync with docs/code-style.md - added explicit import preference)
+> **Last Updated**: 2025-01-23 (Sync with docs/contributor/code-style.md - added explicit import preference)
 >
-> **CRITICAL**: This file must stay synchronized with `docs/code-style.md`. When the full guide changes, update this AI-optimized version immediately.
+> **CRITICAL**: This file must stay synchronized with `docs/contributor/code-style.md`. When the full guide changes, update this AI-optimized version immediately.
 
 ## Core Rules
 
@@ -361,7 +361,7 @@ When making code changes:
 ## Synchronization Notes
 
 **AI Assistant Responsibilities**:
-- When `docs/code-style.md` is updated, immediately update this file
+- When `docs/contributor/code-style.md` is updated, immediately update this file
 - Focus on patterns most critical for AI code generation
 - Emphasize anti-patterns that AI assistants commonly make
 - Keep examples actionable and immediately usable

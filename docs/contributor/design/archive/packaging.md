@@ -328,12 +328,12 @@ docker run --rm ca-bhfuil:local sh -c "pip list"
 ### New Files
 - [x] `.github/workflows/build-and-release.yml` - Main workflow
 - [x] `Dockerfile` - Replace current with UV + Alpine version
-- [x] `docs/CONTAINER_USAGE.md` - User documentation
+- [x] `docs/user/CONTAINER_USAGE.md` - User documentation
 
 ### Modified Files  
 - [ ] `README.md` - Add container usage instructions
 - [ ] `.dockerignore` - Optimize for new build process
-- [ ] `docs/DEVELOPMENT.md` - Update with container testing info
+- [ ] `docs/contributor/DEVELOPMENT.md` - Update with container testing info
 
 ### Removed Files
 - [ ] `Dockerfile.dev` - Remove development container

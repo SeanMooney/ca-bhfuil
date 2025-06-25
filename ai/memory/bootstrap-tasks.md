@@ -238,6 +238,7 @@ The bootstrap phase is complete when:
 **Bootstrap Phase**: Nearly complete (search implementation remaining)  
 **Design Phase**: Successfully completed  
 **Configuration Foundation Phase**: Successfully completed  
+**Documentation Restructuring**: Successfully completed (2025-06-25)  
 **Current Status**: Ready for repository management implementation
 
 ### Configuration Foundation Accomplishments (2025-01-22)
@@ -277,7 +278,9 @@ The bootstrap phase is complete when:
 
 ## Notes for Claude Code
 
-- **Follow technology decisions strictly** - use only dependencies listed in docs/design/technology-decisions.md
+- **Follow technology decisions strictly** - use only dependencies listed in docs/contributor/design/technology-decisions.md
+- **Follow design guidance** - consult docs/contributor/design/ documents for architecture patterns and decisions
+- **Update documentation** - keep user docs (docs/user/) and contributor docs (docs/contributor/) current with changes
 - **Implement incrementally** - each task should result in working, testable code
 - **Update memory files** - document decisions and progress in ai/memory/
 - **Focus on fundamentals** - get basic functionality solid before adding features
