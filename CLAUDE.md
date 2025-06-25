@@ -6,64 +6,53 @@
 
 ## Project Status
 
-**Ca-Bhfuil** *(pronounced "caw will")* is a git repository analysis tool for open source maintainers, currently in the **core implementation phase**.
+**For current project status and implementation progress, see `ai/memory/project-status.md`**
 
-**Canonical Repository**: https://github.com/SeanMooney/ca-bhfuil
-
-- ✅ **Design Complete**: Project vision, technology stack, and architecture defined
-- ✅ **Structure Ready**: Repository organization and AI memory system established
-- ✅ **Bootstrap Complete**: Python package structure implemented and functional
-- 🔄 **Current Phase**: Core functionality development (git operations, search, analysis)
-- ⏳ **Next Goal**: Implement git operations using pygit2 and search functionality
+**Quick Summary**: Ca-Bhfuil is a git repository analysis tool in the core implementation phase, with configuration foundation complete and ready for repository management implementation.
 
 ## Quick Context
 
-### What This Tool Does
-Helps open source maintainers track commits across stable branches:
-- Find where CVE fixes have been backported
-- Identify what's missing from stable branches
-- Understand commit distribution across git history
+**For detailed project understanding, see `ai/memory/project-context.md`**
 
-### Key Technical Decisions
-- **Git Operations**: pygit2 (LibGit2 bindings) for 10x+ performance
-- **Storage**: SQLite-based everything (diskcache + custom schemas)
-- **AI Integration**: Local-first (Ollama/vLLM) with optional cloud fallback
-- **CLI**: Typer with Rich terminal output
-- **Philosophy**: Local-first, privacy-preserving, single-developer optimized
+### What This Tool Does
+Helps open source maintainers track commits across stable branches and find where fixes have been backported.
+
+ ### Key Technical Approach
+- **High Performance**: pygit2 for git operations
+- **Local-First**: SQLite-based storage with no external dependencies
+- **AI-Enhanced**: Optional local AI integration
+- **Rich CLI**: Typer with beautiful terminal output
+
+**For complete technology rationale, see `docs/contributor/design/technology-decisions.md`**
 
 ## AI Memory System
 
 This project uses **file-based AI memory** for persistent context across development sessions.
 
-### Essential Reading (Read These First)
+### Essential AI Memory Files (Read These First)
 ```
 ai/memory/
 ├── project-context.md          # High-level project understanding
-├── architecture-decisions.md   # Key technical decisions
+├── architecture-decisions.md   # Key technical decisions (ADR format)
 ├── current-focus.md           # Active development priorities
-└── bootstrap-tasks.md         # Specific development tasks
+├── bootstrap-tasks.md         # Specific development tasks
+├── ai-style-guide.md          # Condensed coding standards
+└── patterns.md                # Reusable development patterns
 ```
 
-### Complete Documentation
+### Authoritative Documentation Sources
 ```
-docs/
-├── user/                        # User-facing documentation
-│   ├── CONTAINER_USAGE.md       # Container usage and security guide
-│   └── cli-reference.md         # CLI command reference
-├── contributor/                 # Contributor documentation
-│   ├── DEVELOPMENT.md           # Development environment setup
-│   ├── code-style.md           # Code style guide and standards
-│   └── design/                 # Technical design documents
-│       ├── project-vision.md            # Product vision and user goals
-│       ├── architecture-overview.md     # System design and components
-│       ├── technology-decisions.md      # Technology choices and rationale
-│       ├── cli-design-patterns.md       # CLI design principles and conventions
-│       ├── data-storage-design.md       # Storage architecture and data management
-│       ├── repository-management.md     # Git operations and repository management
-│       ├── development-workflow.md      # CI/CD and development process
-│       └── archive/                     # Previous design documents (archived)
-└── README.md                    # Project overview and getting started
+docs/contributor/design/        # Complete technical documentation
+├── project-vision.md           # Product vision and user goals
+├── architecture-overview.md    # System design and components  
+├── technology-decisions.md     # Technology choices and rationale
+├── repository-management.md    # Git operations design
+└── development-workflow.md     # CI/CD and development process
+docs/user/                      # User-facing documentation
+└── cli-reference.md            # CLI command reference
 ```
+
+**Key Principle**: AI memory files contain session-specific context. For authoritative project information, always reference `docs/` first.
 
 ## Development Workflow
 
@@ -176,125 +165,37 @@ Before committing any code, AI assistants must verify:
 - [ ] **Configuration valid**: Changes don't break existing configurations
 - [ ] **Error handling present**: Proper exception handling for new code paths
 
-## Repository Structure (Current)
+## Repository Structure Reference
 
-```
-ca-bhfuil/
-├── src/ca_bhfuil/             # Main application package ✅
-│   ├── cli/                   # Command-line interface (Typer) ✅
-│   │   └── main.py           # CLI implementation with typer
-│   ├── core/                  # Core business logic ✅
-│   │   ├── git/              # Git operations (pygit2) 🔄
-│   │   ├── models/           # Pydantic data models ✅
-│   │   │   └── commit.py     # CommitInfo model
-│   │   ├── search/           # Search implementations 🔄
-│   │   ├── analysis/         # Analysis algorithms 🔄
-│   │   └── config.py         # Configuration management ✅
-│   ├── storage/              # SQLite-based persistence ✅
-│   │   ├── cache/            # Caching (diskcache) ✅
-│   │   │   └── diskcache_wrapper.py
-│   │   └── database/         # Database operations ✅
-│   │       └── schema.py     # Database schema
-│   ├── agents/               # AI integration (PydanticAI) 🔄
-│   ├── integrations/         # External integrations 🔄
-│   └── utils/                # Utilities 🔄
-├── tests/                     # Test suite ✅
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   └── fixtures/             # Test fixtures
-├── docs/                      # Documentation ✅
-│   ├── user/                  # User documentation ✅
-│   │   ├── CONTAINER_USAGE.md # Container usage guide
-│   │   └── cli-reference.md   # CLI command reference
-│   └── contributor/           # Contributor documentation ✅
-│       ├── DEVELOPMENT.md     # Development setup
-│       ├── code-style.md      # Code style guide
-│       └── design/            # Design documents
-├── ai/                        # AI development workspace ✅
-├── scripts/                   # Development utilities ✅
-├── config/                    # Configuration templates ✅
-├── pyproject.toml            # Package configuration ✅
-└── uv.lock                   # Dependency lock file ✅
-```
+**For current repository structure and implementation status, see `ai/memory/bootstrap-tasks.md`**
 
-**Legend**: ✅ Implemented | 🔄 In Progress | ⏳ Planned
+**Key directories for AI development**:
+- `src/ca_bhfuil/`: Main application package
+- `tests/`: Comprehensive test suite
+- `ai/memory/`: AI session memory and context
+- `docs/contributor/design/`: Authoritative design documents
 
 ## Key Development Principles
 
-### Performance First
-- Use pygit2 for all git operations (never GitPython)
-- Implement aggressive caching from day one
-- Design for repositories with 10k+ commits
+**For complete principles and rationale, see `docs/contributor/design/technology-decisions.md`**
 
-### Local-First Everything
-- All storage uses SQLite (no external databases)
-- AI models run locally when possible
-- No required external services
+### Core Principles for AI Development
+- **Performance First**: Use pygit2, implement aggressive caching
+- **Local-First**: SQLite storage, no external dependencies
+- **Type Safety**: Full type hints, Pydantic models, mypy strict mode
+- **AI Integration**: Local models preferred, structured output
 
-### Type Safety
-- Full type hints throughout codebase
-- Pydantic models for all data structures
-- mypy strict mode configuration
+### AI-Specific Development Guidelines
+- Always follow `ai/memory/ai-style-guide.md` for coding standards
+- Reference `ai/memory/patterns.md` for established development patterns
+- Update memory files with new decisions and learnings
+- Use session templates for consistent development approach
 
-### AI Integration
-- Provider-agnostic design (Ollama, vLLM, OpenRouter)
-- Local models preferred, cloud optional
-- Structured output using Pydantic schemas
+## Implementation Status Reference
 
-## Current Implementation Status
-
-**DESIGN PHASE COMPLETE** ✅ - Ready for core implementation
-
-### Completed Phases
-- ✅ **Bootstrap Phase**: Python package structure, CLI framework, basic tooling
-- ✅ **Design Phase**: Complete git repository management architecture
-
-### Design Phase Achievements (2025-01-21)
-- ✅ **Git Repository Management Design**: Complete architecture in `docs/contributor/design/repository-management.md`
-- ✅ **XDG Base Directory Compliance**: Linux standards-compliant data storage
-- ✅ **Security Architecture**: SSH-first authentication with separate config files
-- ✅ **CLI Pattern**: Consistent `ca-bhfuil <resource> <operation> [--options]` interface
-- ✅ **Concurrent Safety**: Lock file management for safe operations
-- ✅ **Schema Versioning**: Future-proof SQLite database design
-
-### Current Architecture Summary
-
-**Directory Structure (XDG Compliant)**:
-```
-~/.config/ca-bhfuil/          # Configuration (git-safe)
-├── repositories.yaml         # Repository definitions
-├── global-settings.yaml      # Global settings  
-└── auth.yaml                 # Authentication (git-ignored)
-
-~/.local/state/ca-bhfuil/     # Persistent state (important data)
-└── github.com/torvalds/linux/# Metadata per repository
-    ├── analysis.db           # Commit analysis
-    ├── sync-log.db          # Sync history
-    └── .locks/              # Concurrent operation safety
-
-~/.cache/ca-bhfuil/          # Cache data (can be regenerated)
-└── repos/github.com/torvalds/linux/  # Git repositories
-```
-
-**Key Design Decisions**:
-- URL-based repository organization (no slugs)
-- SSH-preferred authentication
-- SQLite with schema versioning
-- pygit2 for high-performance git operations
-
-### Next Implementation Phase
-
-**Priority 1: Configuration Foundation**
-```
-Implement XDG-compliant configuration management system with URL-to-path
-utilities and authentication handling as the foundation for all other functionality.
-```
-
-**Priority 2: Git Operations Core**  
-```
-Implement repository registry and basic git operations using pygit2 for
-repository detection, commit lookup, and synchronization.
-```
+**For current implementation status, see `ai/memory/project-status.md`**
+**For detailed current work, see `ai/memory/current-focus.md`**
+**For specific development tasks, see `ai/memory/bootstrap-tasks.md`**
 
 ## Memory Management
 
@@ -341,318 +242,122 @@ When making architectural or technical decisions, document them in `ai/memory/ar
 ### Enhanced Memory Management
 
 #### Session Logs for Complex Work
-For substantial development work spanning multiple sessions, create:
+For substantial development work, create session logs:
 `ai/memory/session-logs/YYYY-MM-DD-feature-name.md`
 
-```markdown
-# Session Log: [Feature Name]
-**Date**: YYYY-MM-DD  
-**Objective**: [What we're trying to accomplish]
-
-## Progress Made
-- [Key accomplishments this session]
-- [Important decisions made]
-- [Tests written/passing]
-
-## Challenges Encountered
-- [Technical issues and how resolved]
-- [Design conflicts and resolutions]
-- [Unexpected complexities discovered]
-
-## Key Learnings
-- [Patterns that worked well]
-- [Anti-patterns to avoid]
-- [Insights for future development]
-
-## Next Steps
-- [Immediate next actions for following session]
-- [Longer-term goals]
-- [Dependencies to resolve]
-
-## Code Locations
-- [Key files modified]
-- [New files created]
-- [Test files updated]
-```
+**Template available in session handoff section above.**
 
 #### Pattern Library
-Maintain `ai/memory/patterns.md` with reusable solutions:
+**Maintain `ai/memory/patterns.md`** with:
+- Code patterns that work well
+- Anti-patterns to avoid  
+- Architecture and integration patterns
+- Testing strategies
 
-```markdown
-# Development Patterns Library
-
-## Code Patterns That Work Well
-- [Specific patterns used successfully in this codebase]
-- [Testing strategies that have been effective]
-- [Error handling approaches that work]
-
-## Anti-Patterns to Avoid
-- [Patterns that caused problems]
-- [Why they didn't work]
-- [Better alternatives]
-
-## Architecture Patterns
-- [Higher-level design patterns used]
-- [Integration patterns between components]
-- [Data flow patterns]
-```
-
-### Document New Patterns
-- Add development patterns to appropriate memory files
-- Update project context when understanding evolves
-- Create session logs for complex development work
+#### Best Practices
+- **Document new patterns** in appropriate memory files
+- **Update project context** when understanding evolves
+- **Create session logs** for complex development work
+- **Reference authoritative sources** rather than duplicating information
 
 ### Style Guide Synchronization
 
-**CRITICAL**: When `docs/contributor/code-style.md` is updated, `ai/memory/ai-style-guide.md` MUST be updated to maintain an AI-optimized version.
+**CRITICAL**: When `docs/contributor/code-style.md` is updated, `ai/memory/ai-style-guide.md` MUST be updated immediately.
 
-**Process for Style Guide Updates**:
-1. **When `docs/contributor/code-style.md` changes**: AI assistant must immediately update `ai/memory/ai-style-guide.md`
-2. **AI-optimized format**: Create condensed, actionable guidelines focused on patterns AI assistants need
-3. **Key differences**: AI guide emphasizes import patterns, type hints, and critical anti-patterns
-4. **Bidirectional sync**: Changes to coding practices should be reflected in both files
-5. **Validation**: AI should verify the condensed guide captures all critical patterns from the full guide
+**Sync Process**:
+1. **Detect changes** in full style guide
+2. **Update AI-optimized version** with condensed, actionable guidelines
+3. **Validate completeness** - ensure critical patterns are captured
+4. **Test compliance** - verify code follows updated standards
 
-**Essential AI Style Guide Elements**:
+**Key Elements in AI Guide**:
 - Module-only import patterns (CRITICAL)
-- Type hint requirements and modern syntax
-- Error handling patterns
-- Testing structure and mocking guidelines
-- Common anti-patterns to avoid
-- Quick reference examples for immediate use
+- Type hints and modern Python syntax
+- Error handling and testing patterns
+- Quick reference anti-patterns
 
 ## Troubleshooting and Recovery
 
-### Common Development Issues
-
-#### When Tests Fail After Changes
-1. **Don't commit failing tests** - always fix or mark as known issues first
-2. **Check recent changes**: `git diff HEAD~1` to see what might have broken
-3. **Run specific test**: `uv run pytest path/to/failing_test.py -v` for details
-4. **Check dependencies**: Ensure no version conflicts in `uv.lock`
-5. **Review design docs**: Verify changes align with intended architecture
-6. **Restore known good state**: `git stash` or `git reset` if needed
-
-#### When Design Conflicts Arise
-1. **Document the conflict** in `ai/memory/architecture-decisions.md`
-2. **Review existing decisions** for precedent and rationale
-3. **Consult design documents** in `docs/contributor/design/` for guidance
-4. **Propose solutions** with trade-offs analysis
-5. **Update design docs** once resolution is clear
-6. **Ensure consistency** across all affected components
-
-#### When Implementation Gets Complex
-1. **Step back and review** the original design documents
-2. **Break into smaller pieces** - implement incrementally
-3. **Write tests first** to clarify expected behavior
-4. **Create session log** to track decisions and learnings
-5. **Update memory files** with new patterns discovered
-6. **Consider if design needs updating** based on new complexity
-
-#### When Dependencies Cause Issues
-1. **Check technology decisions** in `docs/contributor/design/technology-decisions.md`
-2. **Verify UV lock file**: `uv lock --check` for consistency
-3. **Review recent dependency changes**: Check if updates broke something
-4. **Use approved dependencies only** - no unauthorized additions
-5. **Document new dependencies** in architecture decisions if needed
-
-### Recovery Procedures
-
-#### Recovering from Bad Commits
+### Quick Recovery Commands
 ```bash
-# View recent commits
+# View recent changes
 git log --oneline -10
+git diff HEAD~1
 
-# Soft reset to fix last commit (keeps changes)
-git reset --soft HEAD~1
+# Fix broken environment  
+rm -rf .venv && uv sync --dev
 
-# Hard reset to discard changes completely (dangerous!)
-git reset --hard HEAD~1
-
-# Interactive rebase to edit multiple commits
-git rebase -i HEAD~3
+# Run quality checks
+uv run ruff check && uv run mypy && uv run pytest
 ```
 
-#### Recovering Lost Work
-```bash
-# Find lost commits
-git reflog
+### Common Issues
+- **Tests failing**: Run specific test with `uv run pytest path/to/test.py -v`
+- **Design conflicts**: Document in `ai/memory/architecture-decisions.md`
+- **Complex implementation**: Break into smaller pieces, write tests first
+- **Dependency issues**: Check `docs/contributor/design/technology-decisions.md`
 
-# Restore from reflog
-git checkout <commit-hash>
-git checkout -b recovery-branch
-
-# Restore specific files
-git checkout HEAD~1 -- path/to/file
-```
-
-#### Cleaning Up Development Environment
-```bash
-# Clean UV environment
-rm -rf .venv
-uv sync --dev
-
-# Clean Git status
-git clean -fd  # Remove untracked files (careful!)
-git reset --hard HEAD  # Reset to last commit
-```
+**For complete troubleshooting guide, see `docs/contributor/DEVELOPMENT.md`**
 
 ## Project Evolution Guidelines
 
 ### Technology Updates
+1. **Check rationale** in `docs/contributor/design/technology-decisions.md`
+2. **Document motivation** and assess impact
+3. **Update in stages** with thorough testing
+4. **Update memory files** with new patterns
 
-When considering updates to dependencies or core technologies:
+### Architecture Changes
+1. **Update design documents first** before implementing
+2. **Document migration strategy** and breaking changes
+3. **Implement incrementally** with validation at each phase
 
-#### Before Making Changes
-1. **Check current rationale** in `docs/contributor/design/technology-decisions.md`
-2. **Document the motivation** for the update (security, features, performance)
-3. **Assess impact** on existing code and architecture
-4. **Create migration plan** with rollback strategy
-5. **Test thoroughly** with representative workloads
-
-#### During Updates
-1. **Update in stages** - don't change everything at once
-2. **Maintain backward compatibility** when possible
-3. **Update tests first** to catch regressions
-4. **Document breaking changes** clearly
-5. **Update AI style guide** for new patterns or requirements
-
-#### After Updates
-1. **Update technology decisions** document with new rationale
-2. **Update memory files** with new patterns or constraints
-3. **Verify all quality gates** still pass
-4. **Create migration notes** for future reference
-
-### Feature Deprecation
-
-When removing or replacing features:
-
-#### Planning Phase
-1. **Mark as deprecated** with clear timeline in documentation
-2. **Provide migration path** or alternatives
-3. **Update user documentation** with deprecation notices
-4. **Plan removal timeline** (minimum 2 releases recommended)
-
-#### Implementation Phase
-1. **Add deprecation warnings** to code
-2. **Maintain backward compatibility** during deprecation period
-3. **Update tests** to handle deprecated features
-4. **Communicate changes** in release notes
-
-#### Removal Phase
-1. **Remove deprecated code** after deprecation period
-2. **Update documentation** to remove references
-3. **Update design documents** if architecture changes
-4. **Verify no breaking side effects**
-
-### Architecture Evolution
-
-When making significant architectural changes:
-
-#### Documentation First
-1. **Update design documents** before implementing
-2. **Document migration strategy** from current to new architecture
-3. **Identify breaking changes** and mitigation strategies
-4. **Get alignment** on approach before proceeding
-
-#### Incremental Implementation
-1. **Implement in phases** to minimize risk
-2. **Maintain parallel systems** during transition if needed
-3. **Validate each phase** thoroughly before proceeding
-4. **Document lessons learned** for future evolutions
+**For complete evolution guidelines, see `docs/contributor/design/development-workflow.md`**
 
 ## Development Tools Integration
 
-### IDE Configuration
-
-#### Recommended VSCode Settings
-Create `.vscode/settings.json` for consistent development environment:
-
-```json
-{
-    "python.defaultInterpreterPath": ".venv/bin/python",
-    "python.terminal.activateEnvironment": false,
-    "python.linting.enabled": false,
-    "python.formatting.provider": "none",
-    "editor.formatOnSave": true,
-    "editor.rulers": [88],
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": true,
-            "source.fixAll": true
-        }
-    },
-    "mypy-type-checker.importStrategy": "fromEnvironment",
-    "ruff.importStrategy": "fromEnvironment"
-}
-```
-
-#### Recommended Extensions
-- **Python** - Python language support
-- **Pylance** - Advanced Python language server
-- **Ruff** - Linting and formatting
-- **MyPy Type Checker** - Type checking integration
-- **GitHub Copilot** - AI code assistance (if available)
-
-### CI/CD Integration
-
-#### Branch Protection Rules
-Configure GitHub branch protection for main branches:
-- Require pull request reviews
-- Require status checks to pass (CI, type checking, linting)
-- Require branches to be up to date before merging
-- Include administrators in restrictions
-
-#### Automated Testing
-Ensure CI validates AI-generated code:
-- All quality gates must pass in CI
-- Test coverage reporting
-- Dependency vulnerability scanning
-- Documentation validation
-
-### Git Hooks Integration
-
-#### Pre-commit Configuration
-The project uses pre-commit hooks to enforce quality:
-
+### Essential Tools Setup
 ```bash
 # Install pre-commit hooks
 uv run pre-commit install
 
-# Run on all files manually
-uv run pre-commit run --all-files
+# Quality checks
+uv run ruff check && uv run ruff format
+uv run mypy && uv run pytest
 ```
 
-#### Custom Git Hooks
-Consider adding project-specific hooks:
-- Commit message validation
-- Memory file update reminders
-- Documentation sync checks
+### IDE Configuration
+**For complete VSCode settings and extensions, see `docs/contributor/DEVELOPMENT.md`**
 
-### Quality Assurance
+Key requirements:
+- Ruff for formatting and linting
+- MyPy for type checking
+- Python language server (Pylance)
 
-#### Automated Quality Checks
-- **Ruff**: Linting and formatting
-- **MyPy**: Type checking in strict mode
-- **Pytest**: Comprehensive test suite
-- **UV**: Dependency management and security
+### CI/CD Integration
+**For complete CI/CD pipeline, see `docs/contributor/design/development-workflow.md`**
 
-#### Integration with AI Development
-- Quality gates align with AI assistant workflow
-- Memory system updates can be validated automatically
-- Documentation consistency can be checked in CI
+All quality gates must pass:
+- Code formatting and linting
+- Type checking
+- Test suite
+- Documentation validation
 
-## Questions or Issues?
+## Quick Reference
 
-If you need clarification:
-1. **Check AI memory files** for documented decisions
-2. **Review design documents** for comprehensive context  
-3. **Update memory files** with new insights
-4. **Ask specific questions** about unclear requirements
-5. **Use troubleshooting section** for common development issues
+### Need Information?
+1. **Project understanding**: `ai/memory/project-context.md`
+2. **Current priorities**: `ai/memory/current-focus.md`
+3. **Architecture details**: `docs/contributor/design/architecture-overview.md`
+4. **Development tasks**: `ai/memory/bootstrap-tasks.md`
+5. **Coding standards**: `ai/memory/ai-style-guide.md`
+
+### Common Questions
+- **"What is this project?"** → `ai/memory/project-context.md`
+- **"What should I work on?"** → `ai/memory/current-focus.md`
+- **"How does the system work?"** → `docs/contributor/design/architecture-overview.md`
+- **"Why this technology choice?"** → `docs/contributor/design/technology-decisions.md`
+- **"How do I code this?"** → `ai/memory/ai-style-guide.md` + `ai/memory/patterns.md`
 
 ## 🚨 Critical Reminders for AI Assistants
 
@@ -673,6 +378,29 @@ If you need clarification:
 - **When `docs/contributor/code-style.md` changes**: IMMEDIATELY update `ai/memory/ai-style-guide.md`
 - **Maintain AI optimization**: Keep the condensed guide focused on patterns AI assistants need most
 - **Verify completeness**: Ensure critical patterns from the full guide are captured in the AI version
+
+## Authoritative Documentation Sources
+
+**Always reference these authoritative sources for complete information:**
+
+### Project Understanding
+- `ai/memory/project-context.md` - High-level project overview
+- `docs/contributor/design/project-vision.md` - Complete product vision
+
+### Architecture & Design  
+- `docs/contributor/design/architecture-overview.md` - System architecture
+- `docs/contributor/design/technology-decisions.md` - Technology choices
+- `ai/memory/architecture-decisions.md` - Development decisions (ADR format)
+
+### Development
+- `docs/contributor/DEVELOPMENT.md` - Environment setup
+- `docs/contributor/code-style.md` - Complete coding standards
+- `ai/memory/ai-style-guide.md` - AI-optimized coding guide
+- `ai/memory/patterns.md` - Proven development patterns
+
+### Current Work
+- `ai/memory/current-focus.md` - Active priorities and session handoffs
+- `ai/memory/bootstrap-tasks.md` - Specific development tasks
 
 ---
 
