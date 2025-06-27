@@ -252,3 +252,7 @@ This concurrency design integrates with the broader system architecture:
 ---
 
 This architecture provides Ca-Bhfuil with concurrent processing capabilities while maintaining the tool's core principles of local-first operation, performance focus, and single-developer maintainability.
+
+---
+
+**Implementation Note (2025-06-27):** The foundational async infrastructure, as detailed in `ai/memory/async-conversion-tasks.md`, has been implemented. This includes the core async managers, I/O handlers, and the CLI bridge. The next step is to integrate these components into the application's feature logic.

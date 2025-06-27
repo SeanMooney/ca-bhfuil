@@ -12,6 +12,7 @@ import yaml
 
 import ca_bhfuil.cli.completion as completion
 import ca_bhfuil.core.config as config_module
+from ca_bhfuil.cli.async_bridge import run_async
 
 
 # Create the main app and subcommands
@@ -365,5 +366,10 @@ def main(
     """Ca-Bhfuil: Git repository analysis tool for open source maintainers."""
 
 
-if __name__ == "__main__":
+async def amain() -> None:
+    """Async main function to run the typer app."""
     app()
+
+
+if __name__ == "__main__":
+    run_async(amain())
