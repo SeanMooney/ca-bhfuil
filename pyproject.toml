@@ -47,6 +47,8 @@ dependencies = [
 
     # Utilities
     "aiofiles>=23.0.0",
+    "aiosqlite>=0.19.0",
+    "watchfiles>=0.21.0",
 ]
 
 [project.optional-dependencies]
