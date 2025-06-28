@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import socket
 import tempfile
 import unittest
 from unittest import mock
@@ -9,6 +10,8 @@ from unittest import mock
 import pytest
 
 from ca_bhfuil.core import config
+from ca_bhfuil.core.git import async_git
+from ca_bhfuil.core.git import clone as async_clone_module
 from ca_bhfuil.utils import paths
 
 
@@ -22,7 +25,6 @@ def pytest_configure(config):
 
 def network_available() -> bool:
     """Check if network is available for testing."""
-    import socket
 
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=5)
@@ -261,54 +263,52 @@ class TestRealWorldCloning:
             yield pathlib.Path(tmp_dir)
 
     @pytest.mark.slow
-    def test_hello_world_clone_preparation(
-        self, temp_clone_dir, real_world_repo_configs
-    ):
-        """Test preparation for cloning Hello-World repository."""
-        # This test prepares for actual cloning without doing it
+    @pytest.mark.asyncio
+    async def test_hello_world_clone(self, temp_clone_dir, real_world_repo_configs):
+        """Test cloning Hello-World repository."""
         small_repo = real_world_repo_configs["small-test"]
-        target_path = temp_clone_dir / "hello-world"
+        # target_path = temp_clone_dir / "hello-world" # Removed unused variable
 
-        # Validate URL and paths
-        assert paths.is_valid_url(small_repo["url"])
-        assert not target_path.exists()
+        repo_config = config.RepositoryConfig(
+            name="hello-world",
+            source={"url": small_repo["url"], "type": "git"},
+        )
 
-        # This is where we would call pygit2.clone_repository
-        clone_config = {
-            "url": small_repo["url"],
-            "path": str(target_path),
-            "bare": True,
-            "expected_branches": small_repo["expected_branches"],
-            "approximate_commits": small_repo["approximate_commits"],
-        }
+        git_manager = async_git.AsyncGitManager()
+        cloner = async_clone_module.AsyncRepositoryCloner(git_manager)
 
-        assert clone_config["url"] == "https://github.com/octocat/Hello-World"
-        assert clone_config["expected_branches"] == ["master"]
-        assert clone_config["approximate_commits"] == 10
+        clone_result = await cloner.clone_repository(repo_config)
+
+        assert clone_result.success is True
+        assert pathlib.Path(clone_result.repository_path).exists()
+        assert pathlib.Path(clone_result.repository_path).is_dir()
+
+        # Basic check for a valid git repo
+        assert (pathlib.Path(clone_result.repository_path) / ".git").is_dir()
 
     @pytest.mark.slow
-    def test_os_vif_clone_preparation(self, temp_clone_dir, real_world_repo_configs):
-        """Test preparation for cloning os-vif repository."""
-        # This test prepares for actual cloning without doing it
+    @pytest.mark.asyncio
+    async def test_os_vif_clone(self, temp_clone_dir, real_world_repo_configs):
+        """Test cloning os-vif repository."""
         os_vif_repo = real_world_repo_configs["os-vif"]
-        target_path = temp_clone_dir / "os-vif"
+        # target_path = temp_clone_dir / "os-vif" # Removed unused variable
 
-        # Validate URL and paths
-        assert paths.is_valid_url(os_vif_repo["url"])
-        assert not target_path.exists()
+        repo_config = config.RepositoryConfig(
+            name="os-vif",
+            source={"url": os_vif_repo["url"], "type": "git"},
+        )
 
-        # This is where we would call pygit2.clone_repository
-        clone_config = {
-            "url": os_vif_repo["url"],
-            "path": str(target_path),
-            "bare": True,
-            "expected_branches": os_vif_repo["expected_branches"],
-            "approximate_commits": os_vif_repo["approximate_commits"],
-        }
+        git_manager = async_git.AsyncGitManager()
+        cloner = async_clone_module.AsyncRepositoryCloner(git_manager)
 
-        assert clone_config["url"] == "https://opendev.org/openstack/os-vif"
-        assert "master" in clone_config["expected_branches"]
-        assert clone_config["approximate_commits"] >= 100
+        clone_result = await cloner.clone_repository(repo_config)
+
+        assert clone_result.success is True
+        assert pathlib.Path(clone_result.repository_path).exists()
+        assert pathlib.Path(clone_result.repository_path).is_dir()
+
+        # Basic check for a valid git repo
+        assert (pathlib.Path(clone_result.repository_path) / ".git").is_dir()
 
 
 class TestCloneValidation:
@@ -365,7 +365,6 @@ class TestErrorHandling:
 
     def test_network_error_handling(self):
         """Test handling of network errors during cloning."""
-        import socket
 
         def simulate_clone_with_network_error():
             """Simulate a clone operation that fails due to network."""

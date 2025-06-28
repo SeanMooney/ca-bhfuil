@@ -2,7 +2,7 @@
 
 import pathlib
 import re
-import urllib.parse
+from urllib import parse
 
 from ca_bhfuil.core import config
 
@@ -30,7 +30,7 @@ def url_to_path(url: str) -> str:
             return f"{host}/{path}"
     else:
         # Handle HTTP/HTTPS format
-        parsed = urllib.parse.urlparse(url)
+        parsed = parse.urlparse(url)
         if parsed.scheme in ("http", "https"):
             # Remove leading slash and .git suffix
             path = parsed.path.lstrip("/").removesuffix(".git")
@@ -190,7 +190,7 @@ def is_valid_url(url: str) -> bool:
             return ":" in url and "/" in url
         if url.startswith(("http://", "https://")):
             # HTTP/HTTPS should have a path component
-            parsed = urllib.parse.urlparse(url)
+            parsed = parse.urlparse(url)
             path = parsed.path.strip("/")
             # Should have at least host/repo format or end with .git
             return "/" in path or path.endswith(".git") or url.endswith(".git")
@@ -218,7 +218,7 @@ def normalize_url(url: str) -> str:
                 return f"https://{host}/{path}.git"
 
         # Ensure HTTPS URLs have .git suffix
-        parsed = urllib.parse.urlparse(url)
+        parsed = parse.urlparse(url)
         if parsed.scheme in ("http", "https"):
             path = parsed.path.rstrip("/")
             if not path.endswith(".git"):

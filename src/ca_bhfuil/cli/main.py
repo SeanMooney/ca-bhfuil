@@ -3,6 +3,7 @@
 import json
 import pathlib
 
+import aiofiles
 from rich import console
 from rich import panel
 from rich import syntax
@@ -10,9 +11,14 @@ from rich import table
 import typer
 import yaml
 
-import ca_bhfuil.cli.completion as completion
-import ca_bhfuil.core.config as config_module
+from ca_bhfuil.cli import completion
+from ca_bhfuil.cli.async_bridge import async_command
 from ca_bhfuil.cli.async_bridge import run_async
+from ca_bhfuil.cli.async_bridge import with_progress
+from ca_bhfuil.core import async_config
+from ca_bhfuil.core import config
+from ca_bhfuil.core.git import async_git
+from ca_bhfuil.core.git import clone
 
 
 # Create the main app and subcommands
@@ -30,18 +36,27 @@ config_app = typer.Typer(
 )
 app.add_typer(config_app, name="config")
 
+# Create repo subcommand group
+repo_app = typer.Typer(
+    name="repo",
+    help="Repository management commands",
+    no_args_is_help=True,
+)
+app.add_typer(repo_app, name="repo")
+
 rich_console = console.Console()
 
 
 @config_app.command("init")
-def config_init(
+@async_command
+async def config_init(
     force: bool = typer.Option(
         False, "--force", "-f", help="Overwrite existing configuration"
     ),
 ) -> None:
     """Initialize default configuration files."""
     try:
-        config_manager = config_module.get_config_manager()
+        config_manager = await async_config.get_async_config_manager()
 
         # Check if config already exists
         if not force and config_manager.repositories_file.exists():
@@ -51,7 +66,10 @@ def config_init(
             raise typer.Exit(1)
 
         # Generate default configuration
-        config_manager.generate_default_config()
+        await with_progress(
+            config_manager.generate_default_config(),
+            "Initializing configuration files...",
+        )
 
         rich_console.print("[green]✅ Configuration initialized successfully![/green]")
         rich_console.print(f"📁 Config directory: {config_manager.config_dir}")
@@ -68,16 +86,19 @@ def config_init(
 
 
 @config_app.command("validate")
-def config_validate() -> None:
+@async_command
+async def config_validate() -> None:
     """Validate current configuration."""
     try:
-        config_manager = config_module.get_config_manager()
+        config_manager = await async_config.get_async_config_manager()
 
         # Validate main configuration
-        config_errors = config_manager.validate_configuration()
-        auth_errors = config_manager.validate_auth_config()
+        async def validate_all() -> list[str]:
+            config_errors = await config_manager.validate_configuration()
+            auth_errors = await config_manager.validate_auth_config()
+            return config_errors + auth_errors
 
-        all_errors = config_errors + auth_errors
+        all_errors = await with_progress(validate_all(), "Validating configuration...")
 
         if not all_errors:
             rich_console.print("[green]✅ Configuration is valid![/green]")
@@ -93,10 +114,11 @@ def config_validate() -> None:
 
 
 @config_app.command("status")
-def config_status() -> None:
+@async_command
+async def config_status() -> None:
     """Show configuration system status."""
     try:
-        config_manager = config_module.get_config_manager()
+        config_manager = await async_config.get_async_config_manager()
 
         # Show configuration paths
         status_table = table.Table(title="Ca-Bhfuil Configuration Status")
@@ -104,9 +126,9 @@ def config_status() -> None:
         status_table.add_column("Path", style="green")
         status_table.add_column("Exists", style="yellow")
 
-        config_dir = config_module.get_config_dir()
-        state_dir = config_module.get_state_dir()
-        cache_dir = config_module.get_cache_dir()
+        config_dir = config.get_config_dir()
+        state_dir = config.get_state_dir()
+        cache_dir = config.get_cache_dir()
 
         status_table.add_row(
             "Config", str(config_dir), "✅" if config_dir.exists() else "❌"
@@ -145,14 +167,16 @@ def config_status() -> None:
         rich_console.print(files_table)
 
         # Show repositories if they exist
-        config = config_manager.load_configuration()
-        if config.repos:
+        global_config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
+        if global_config.repos:
             repos_table = table.Table(title="Configured Repositories")
             repos_table.add_column("Name", style="cyan")
             repos_table.add_column("URL", style="green")
             repos_table.add_column("Auth", style="yellow")
 
-            for repo in config.repos:
+            for repo in global_config.repos:
                 repos_table.add_row(
                     repo.name,
                     repo.source.get("url", "N/A"),
@@ -174,7 +198,8 @@ def config_status() -> None:
 
 
 @config_app.command("show")
-def config_show(
+@async_command
+async def config_show(
     repos: bool = typer.Option(False, "--repos", help="Show repos configuration"),
     global_: bool = typer.Option(False, "--global", help="Show global configuration"),
     auth: bool = typer.Option(False, "--auth", help="Show auth configuration"),
@@ -189,7 +214,7 @@ def config_show(
 ) -> None:
     """Display configuration file contents. Shows global config by default."""
     try:
-        config_manager = config_module.get_config_manager()
+        config_manager = await async_config.get_async_config_manager()
 
         # Default to global settings if no flags are set
         if not any([repos, global_, auth, all_]):
@@ -224,9 +249,9 @@ def config_show(
             if i > 0:
                 rich_console.print()
 
-            # Read and display file contents
-            with open(file_path) as f:
-                content = f.read()
+            # Read and display file contents asynchronously
+            async with aiofiles.open(file_path, encoding="utf-8") as f:
+                content = await f.read()
 
             if format == "json":
                 # Parse YAML and output as JSON
@@ -262,7 +287,8 @@ def install_completion(
 
 
 @app.command()
-def search(
+@async_command
+async def search(
     query: str = typer.Argument(
         ..., help="Search query (SHA, partial SHA, or commit message pattern)"
     ),
@@ -287,7 +313,8 @@ def search(
 
 
 @app.command()
-def status(
+@async_command
+async def status(
     repo_path: pathlib.Path | None = typer.Option(
         None,
         "--repo",
@@ -310,9 +337,9 @@ def status(
     system_table.add_column("Path", style="green")
     system_table.add_column("Status", style="yellow")
 
-    config_dir = config_module.get_config_dir()
-    state_dir = config_module.get_state_dir()
-    cache_dir = config_module.get_cache_dir()
+    config_dir = config.get_config_dir()
+    state_dir = config.get_state_dir()
+    cache_dir = config.get_cache_dir()
 
     system_table.add_row(
         "Config Directory", str(config_dir), "✅" if config_dir.exists() else "❌"
@@ -328,15 +355,17 @@ def status(
 
     # Check configuration
     try:
-        config_manager = config_module.get_config_manager()
-        config = config_manager.load_configuration()
+        config_manager = await async_config.get_async_config_manager()
+        global_config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
 
-        rich_console.print(f"📊 Configured repositories: {len(config.repos)}")
-        if config.repos:
-            for repo in config.repos[:3]:  # Show first 3
+        rich_console.print(f"📊 Configured repositories: {len(global_config.repos)}")
+        if global_config.repos:
+            for repo in global_config.repos[:3]:  # Show first 3
                 rich_console.print(f"   • {repo.name}")
-            if len(config.repos) > 3:
-                rich_console.print(f"   ... and {len(config.repos) - 3} more")
+            if len(global_config.repos) > 3:
+                rich_console.print(f"   ... and {len(global_config.repos) - 3} more")
 
         rich_console.print(
             "[green]✅ Ca-bhfuil configuration loaded successfully![/green]"
@@ -344,6 +373,125 @@ def status(
 
     except Exception as e:
         rich_console.print(f"[red]⚠️  Configuration issue: {e}[/red]")
+
+
+@repo_app.command("add")
+@async_command
+async def repo_add(
+    url: str = typer.Argument(..., help="Repository URL to add"),
+    name: str | None = typer.Option(
+        None, "--name", "-n", help="Repository name (defaults to inferred from URL)"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force clone even if repository exists"
+    ),
+) -> None:
+    """Add a repository to the configuration and clone it."""
+    try:
+        config_manager = await async_config.get_async_config_manager()
+        git_manager = async_git.AsyncGitManager()
+        cloner = clone.AsyncRepositoryCloner(git_manager)
+
+        # Load existing configuration
+        current_config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
+
+        # Infer name from URL if not provided
+        if not name:
+            if url.endswith(".git"):
+                name = url.split("/")[-1][:-4]  # Remove .git extension
+            else:
+                name = url.split("/")[-1]
+
+        # Check if repository already exists in config
+        for repo in current_config.repos:
+            if repo.source.get("url") == url:
+                rich_console.print(
+                    f"[yellow]Repository '{url}' already configured[/yellow]"
+                )
+                raise typer.Exit(1)
+            if repo.name == name:
+                rich_console.print(
+                    f"[yellow]Repository name '{name}' already in use[/yellow]"
+                )
+                raise typer.Exit(1)
+
+        rich_console.print(f"🔄 Adding repository: {name}")
+        rich_console.print(f"📁 URL: {url}")
+
+        # Create a RepositoryConfig object
+        new_repo_config = config.RepositoryConfig(
+            name=name,
+            source={"url": url, "type": "git"},
+        )
+
+        # Perform the clone operation
+        clone_result = await with_progress(
+            cloner.clone_repository(new_repo_config, force=force),
+            f"Cloning {name}...",
+        )
+
+        if not clone_result.success:
+            rich_console.print(
+                f"[red]❌ Failed to clone repository: {clone_result.error}[/red]"
+            )
+            raise typer.Exit(1)
+
+        rich_console.print(
+            f"[green]✅ Successfully cloned {name} to {clone_result.repository_path}[/green]"
+        )
+
+        # Add the new repository to the configuration and save
+        current_config.repos.append(new_repo_config)
+        await with_progress(
+            config_manager.save_configuration(current_config),
+            "Updating configuration...",
+        )
+
+        rich_console.print("[green]✅ Repository added to configuration![/green]")
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error adding repository: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@repo_app.command("list")
+@async_command
+async def repo_list() -> None:
+    """List all configured repositories."""
+    try:
+        config_manager = await async_config.get_async_config_manager()
+
+        config = await with_progress(
+            config_manager.load_configuration(), "Loading repositories..."
+        )
+
+        if not config.repos:
+            rich_console.print("[yellow]No repositories configured[/yellow]")
+            rich_console.print("💡 Use 'ca-bhfuil repo add <url>' to add repositories")
+            return
+
+        repos_table = table.Table(title="Configured Repositories")
+        repos_table.add_column("Name", style="cyan")
+        repos_table.add_column("URL", style="green")
+        repos_table.add_column("Auth", style="yellow")
+        repos_table.add_column("Status", style="blue")
+
+        for repo in config.repos:
+            repos_table.add_row(
+                repo.name,
+                repo.source.get("url", "N/A"),
+                repo.auth_key or "default",
+                "📦 Configured",  # TODO: Add actual status check
+            )
+
+        rich_console.print(repos_table)
+        rich_console.print(f"📊 Total repositories: {len(config.repos)}")
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error listing repositories: {e}[/red]")
+        raise typer.Exit(1)
 
 
 def version_callback(value: bool) -> None:

@@ -8,6 +8,10 @@ import pydantic
 class CommitInfo(pydantic.BaseModel):
     """Information about a git commit."""
 
+    model_config = pydantic.ConfigDict(
+        json_encoders={datetime.datetime: lambda v: v.isoformat()}
+    )
+
     sha: str = pydantic.Field(..., description="Full commit SHA hash")
     short_sha: str = pydantic.Field(
         ..., description="Short commit SHA (first 7 characters)"
@@ -35,11 +39,6 @@ class CommitInfo(pydantic.BaseModel):
     )
     insertions: int | None = pydantic.Field(None, description="Number of insertions")
     deletions: int | None = pydantic.Field(None, description="Number of deletions")
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_encoders = {datetime.datetime: lambda v: v.isoformat()}
 
     def __str__(self) -> str:
         """String representation of commit info."""

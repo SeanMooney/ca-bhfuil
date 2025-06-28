@@ -10,6 +10,39 @@ Ca-bhfuil provides a command-line interface for managing git repository analysis
 ca-bhfuil [OPTIONS] COMMAND [ARGS]...
 ```
 
+## User Experience Features
+
+### Progress Display
+
+Long-running operations display progress information to keep you informed:
+
+```bash
+# Configuration operations show loading progress
+ca-bhfuil config init
+
+# Repository operations show detailed progress
+ca-bhfuil repo add https://github.com/user/repo --force
+
+# Search operations with progress tracking
+ca-bhfuil search "fix bug" --verbose
+```
+
+### Responsive Interface
+
+The CLI remains responsive during operations:
+
+- **Interruptible Operations**: Use Ctrl+C to cancel long-running operations
+- **Status Updates**: Real-time progress bars and status messages
+- **Non-blocking**: The interface stays responsive during file and network operations
+
+### Error Handling
+
+Operations include built-in error handling and recovery:
+
+- **Clear Error Messages**: User-friendly error descriptions with actionable suggestions
+- **Retry Logic**: Automatic retry for transient network issues
+- **Graceful Degradation**: Operations continue with partial results when possible
+
 ## Global Options
 
 - `--version`: Show version and exit
@@ -221,6 +254,61 @@ ca-bhfuil status --repo /path/to/repo
 ca-bhfuil status --verbose
 ```
 
+### repo
+
+Repository management commands for ca-bhfuil.
+
+```bash
+ca-bhfuil repo [OPTIONS] COMMAND [ARGS]...
+```
+
+#### repo add
+
+Add a new repository to the configuration.
+
+```bash
+ca-bhfuil repo add [OPTIONS] URL
+```
+
+**Arguments:**
+- `URL`: Repository URL to add
+
+**Options:**
+- `--name`, `-n`: Repository name (defaults to inferred from URL)
+- `--force`, `-f`: Force clone even if repository exists
+
+**Description:**
+Adds a new repository to the configuration and clones it locally. The operation shows progress information during cloning and configuration updates.
+
+**Examples:**
+```bash
+# Add repository with auto-generated name
+ca-bhfuil repo add https://github.com/user/repo
+
+# Add repository with custom name
+ca-bhfuil repo add https://github.com/user/repo --name my-project
+
+# Force re-clone existing repository
+ca-bhfuil repo add https://github.com/user/repo --force
+```
+
+#### repo list
+
+List configured repositories.
+
+```bash
+ca-bhfuil repo list
+```
+
+**Description:**
+Displays all configured repositories with their status and metadata.
+
+**Examples:**
+```bash
+# List all repositories
+ca-bhfuil repo list
+```
+
 ## Configuration Files
 
 ### repos.yaml
@@ -395,6 +483,22 @@ ca-bhfuil config init --force
 
 # Search for commits (placeholder)
 ca-bhfuil search abc123 --verbose
+```
+
+### Repository Management
+
+```bash
+# Add a new repository
+ca-bhfuil repo add https://github.com/user/project
+
+# Add repository with custom name
+ca-bhfuil repo add https://github.com/user/project --name my-project
+
+# List configured repositories
+ca-bhfuil repo list
+
+# Check repository status
+ca-bhfuil status --repo /path/to/repo
 ```
 
 ## Troubleshooting
