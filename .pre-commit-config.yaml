@@ -59,6 +59,7 @@ repos:
           - typer
           - loguru-mypy
           - pygit2
+          - types-aiofiles
         args: [--strict, --show-error-codes, --no-error-summary]
         exclude: ^(tests/|scripts/)
 

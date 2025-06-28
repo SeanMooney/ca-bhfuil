@@ -4,6 +4,7 @@ import typing
 
 import httpx
 
+
 class AsyncHTTPClient:
     """An asynchronous HTTP client with connection pooling."""
 
@@ -12,7 +13,9 @@ class AsyncHTTPClient:
         self._headers = headers or {}
         self._client = httpx.AsyncClient(base_url=self._base_url, headers=self._headers)
 
-    async def get(self, url: str, params: dict[str, typing.Any] | None = None) -> httpx.Response:
+    async def get(
+        self, url: str, params: dict[str, typing.Any] | None = None
+    ) -> httpx.Response:
         """Perform an async GET request."""
         try:
             response = await self._client.get(url, params=params)
@@ -25,6 +28,6 @@ class AsyncHTTPClient:
             # Handle network errors (e.g., connection refused)
             raise e
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the underlying httpx client."""
         await self._client.aclose()
