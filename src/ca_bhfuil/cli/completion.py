@@ -41,6 +41,21 @@ def complete_repo_path(incomplete: str) -> list[str]:
     return []
 
 
+def complete_repository_name(incomplete: str) -> list[str]:
+    """Complete configured repository names."""
+    try:
+        from ca_bhfuil.core import config
+
+        config_manager = config.ConfigManager()
+        global_config = config_manager.load_configuration()
+
+        repo_names = [repo.name for repo in global_config.repos]
+        return [name for name in repo_names if name.startswith(incomplete)]
+    except Exception:
+        # If we can't load config, return empty list
+        return []
+
+
 def install_completion(shell: str = "bash") -> None:
     """Install shell completion for ca-bhfuil."""
     if shell == "bash":
@@ -153,16 +168,16 @@ _ca_bhfuil_completion() {
         search)
             case "$prev" in
                 --repo|-r)
-                    # Complete directory paths
-                    COMPREPLY=($(compgen -d -- "$cur"))
+                    # Complete repository names (would need custom function)
+                    COMPREPLY=($(compgen -W "" -- "$cur"))
                     ;;
                 *)
                     # If we have a query already, only offer options
                     if [ ${#words[@]} -gt 2 ] && [[ "${words[2]}" != --* ]]; then
-                        COMPREPLY=($(compgen -W "--repo --verbose --help" -- "$cur"))
+                        COMPREPLY=($(compgen -W "--repo --max --pattern --verbose --help" -- "$cur"))
                     else
                         # No query yet, don't offer specific completions
-                        COMPREPLY=($(compgen -W "--repo --verbose --help" -- "$cur"))
+                        COMPREPLY=($(compgen -W "--repo --max --pattern --verbose --help" -- "$cur"))
                     fi
                     ;;
             esac

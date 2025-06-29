@@ -23,17 +23,25 @@ class AsyncProgressTracker:
     async def _consume_progress(self) -> None:
         """Consume progress updates from the queue and invoke the callback."""
         while True:
-            progress = await self._queue.get()
-            if progress is None:  # Sentinel value to stop the consumer
-                break
-            await self._callback(progress)
-            self._queue.task_done()
+            try:
+                progress = await self._queue.get()
+                if progress is None:  # Sentinel value to stop the consumer
+                    break
+                await self._callback(progress)
+                self._queue.task_done()
+            except Exception:
+                # Log exception but continue processing
+                self._queue.task_done()
+                continue
 
     def report_progress(self, progress_obj: progress.OperationProgress) -> None:
         """Put a progress update into the queue from a synchronous context."""
-        asyncio.run_coroutine_threadsafe(
-            self._queue.put(progress_obj), asyncio.get_running_loop()
-        )
+        try:
+            loop = asyncio.get_running_loop()
+            asyncio.run_coroutine_threadsafe(self._queue.put(progress_obj), loop)
+        except RuntimeError:
+            # No running event loop
+            pass
 
     async def shutdown(self) -> None:
         """Shutdown the progress tracker."""

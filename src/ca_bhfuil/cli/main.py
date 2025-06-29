@@ -16,9 +16,11 @@ from ca_bhfuil.cli.async_bridge import async_command
 from ca_bhfuil.cli.async_bridge import run_async
 from ca_bhfuil.cli.async_bridge import with_progress
 from ca_bhfuil.core import async_config
+from ca_bhfuil.core import async_repository
 from ca_bhfuil.core import config
 from ca_bhfuil.core.git import async_git
 from ca_bhfuil.core.git import clone
+from ca_bhfuil.core.models import commit as commit_models
 
 
 # Create the main app and subcommands
@@ -289,27 +291,206 @@ def install_completion(
 @app.command()
 @async_command
 async def search(
-    query: str = typer.Argument(
-        ..., help="Search query (SHA, partial SHA, or commit message pattern)"
+    query_words: list[str] = typer.Argument(
+        ..., help="Search query words (SHA, partial SHA, or commit message pattern)"
     ),
-    repo_path: pathlib.Path | None = typer.Option(
+    repo_name: str | None = typer.Option(
         None,
         "--repo",
         "-r",
-        help="Path to git repository (defaults to current directory)",
-        autocompletion=completion.complete_repo_path,
+        help="Repository name from configuration (defaults to current directory)",
+        autocompletion=completion.complete_repository_name,
+    ),
+    max_results: int = typer.Option(
+        10, "--max", "-m", help="Maximum number of results to return"
+    ),
+    pattern_search: bool = typer.Option(
+        False, "--pattern", "-p", help="Force pattern search in commit messages"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
 ) -> None:
     """Search for commits in the repository."""
-    # TODO: Use verbose parameter when implementing search functionality
-    del verbose
-    repo_path = repo_path or pathlib.Path.cwd()
+    # Join query words into a single search string
+    query = " ".join(query_words)
 
-    rich_console.print(f"🔍 Searching for '{query}' in repository: {repo_path}")
-    rich_console.print("[yellow]🚧 Search functionality not yet implemented[/yellow]")
+    try:
+        # Initialize repository manager and config manager
+        repo_manager = async_repository.AsyncRepositoryManager()
+        config_manager = async_config.AsyncConfigManager()
+
+        # Determine the repository path
+        if repo_name:
+            # Look up repository configuration by name
+            repo_config = await config_manager.get_repository_config_by_name(repo_name)
+            if not repo_config:
+                rich_console.print(
+                    f"[red]❌ Repository '{repo_name}' not found in configuration[/red]"
+                )
+                rich_console.print(
+                    "💡 Use 'ca-bhfuil repo list' to see configured repositories"
+                )
+                raise typer.Exit(1)
+
+            repo_path = repo_config.repo_path
+            if verbose:
+                rich_console.print(
+                    f"📁 Using configured repository '{repo_name}': {repo_path}"
+                )
+        else:
+            # Use current directory
+            repo_path = pathlib.Path.cwd()
+            if verbose:
+                rich_console.print(f"📁 Using current directory: {repo_path}")
+
+        # Detect/validate the repository
+        detect_result = await with_progress(
+            repo_manager.detect_repository(repo_path),
+            f"Detecting git repository at {repo_path}...",
+        )
+
+        if not detect_result.success:
+            if repo_name:
+                rich_console.print(
+                    f"[red]❌ Repository '{repo_name}' not found at {repo_path}[/red]"
+                )
+                rich_console.print(
+                    "💡 The repository may not be cloned yet. Use 'ca-bhfuil repo clone' first"
+                )
+            else:
+                rich_console.print(f"[red]❌ {detect_result.error}[/red]")
+                rich_console.print(
+                    "💡 Make sure you're in a git repository or use --repo to specify a repository name"
+                )
+            raise typer.Exit(1)
+
+        detected_repo_path = pathlib.Path(detect_result.result["repository_path"])
+
+        # Determine if this looks like a SHA or a pattern
+        is_sha_like = (
+            len(query) >= 4
+            and all(c in "0123456789abcdef" for c in query.lower())
+            and not pattern_search
+        )
+
+        if is_sha_like:
+            # Try SHA lookup first
+            rich_console.print(f"🔍 Looking up commit: {query}")
+            lookup_result = await with_progress(
+                repo_manager.lookup_commit(detected_repo_path, query),
+                f"Searching for commit {query}...",
+            )
+
+            if lookup_result.success:
+                commit = lookup_result.result
+                _display_commit_details(commit, verbose)
+                return
+            rich_console.print(
+                f"[yellow]⚠️  No exact SHA match found for '{query}'[/yellow]"
+            )
+            # Fall through to pattern search
+
+        # Pattern search in commit messages
+        rich_console.print(f"🔍 Searching commit messages for: '{query}'")
+        search_result = await with_progress(
+            repo_manager.search_commits(detected_repo_path, query, max_results),
+            "Searching commit messages...",
+        )
+
+        if not search_result.success:
+            rich_console.print(f"[red]❌ Search failed: {search_result.error}[/red]")
+            raise typer.Exit(1)
+
+        matches = search_result.matches
+
+        if not matches:
+            rich_console.print(f"[yellow]No commits found matching '{query}'[/yellow]")
+            return
+
+        # Display results
+        _display_search_results(matches, query, verbose)
+
+        if len(matches) == max_results:
+            rich_console.print(
+                f"[yellow]💡 Showing first {max_results} results. Use --max to see more.[/yellow]"
+            )
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Search error: {e}[/red]")
+        if verbose:
+            import traceback
+
+            rich_console.print(f"[red]{traceback.format_exc()}[/red]")
+        raise typer.Exit(1)
+    finally:
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            repo_manager.shutdown()
+
+
+def _display_commit_details(
+    commit: commit_models.CommitInfo, verbose: bool = False
+) -> None:
+    """Display detailed information about a single commit."""
+    # Create commit details table
+    commit_table = table.Table(title=f"Commit {commit.short_sha}")
+    commit_table.add_column("Field", style="cyan")
+    commit_table.add_column("Value", style="green")
+
+    commit_table.add_row("SHA", commit.sha)
+    commit_table.add_row("Short SHA", commit.short_sha)
+    commit_table.add_row("Author", f"{commit.author_name} <{commit.author_email}>")
+    commit_table.add_row("Date", commit.author_date.strftime("%Y-%m-%d %H:%M:%S %Z"))
+
+    if verbose:
+        commit_table.add_row(
+            "Committer", f"{commit.committer_name} <{commit.committer_email}>"
+        )
+        commit_table.add_row(
+            "Commit Date", commit.committer_date.strftime("%Y-%m-%d %H:%M:%S %Z")
+        )
+        if commit.parents:
+            commit_table.add_row("Parents", ", ".join(p[:7] for p in commit.parents))
+
+    rich_console.print(commit_table)
+
+    # Display commit message
+    rich_console.print(
+        panel.Panel(commit.message.strip(), title="Commit Message", border_style="blue")
+    )
+
+
+def _display_search_results(
+    matches: list[commit_models.CommitInfo], query: str, verbose: bool = False
+) -> None:
+    """Display search results in a formatted table."""
+    results_table = table.Table(title=f"Search Results for '{query}'")
+    results_table.add_column("SHA", style="yellow", width=10)
+    results_table.add_column("Author", style="cyan", width=20)
+    results_table.add_column("Date", style="blue", width=12)
+    results_table.add_column("Message", style="green")
+
+    for commit in matches:
+        # Truncate message for table display
+        message = commit.message.split("\n")[0]  # First line only
+        if len(message) > 60:
+            message = message[:57] + "..."
+
+        date_str = commit.author_date.strftime("%Y-%m-%d")
+        author_str = commit.author_name
+        if len(author_str) > 18:
+            author_str = author_str[:15] + "..."
+
+        results_table.add_row(commit.short_sha, author_str, date_str, message)
+
+    rich_console.print(results_table)
+    rich_console.print(f"📊 Found {len(matches)} matching commits")
+
+    if verbose and matches:
+        rich_console.print("\n[bold]Detailed view of first result:[/bold]")
+        _display_commit_details(matches[0], verbose)
 
 
 @app.command()

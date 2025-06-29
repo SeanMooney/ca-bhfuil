@@ -176,16 +176,131 @@ class TestMainCommands:
                 "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
             ),
             mock.patch(
-                "ca_bhfuil.core.git.async_git.AsyncGitManager"
-            ) as mock_git_class,
+                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
+            ) as mock_repo_manager_class,
         ):
-            mock_git = mock.AsyncMock()
-            mock_git_class.return_value = mock_git
-            mock_git.search_repository.return_value = []
+            mock_repo_manager = mock.AsyncMock()
+            mock_repo_manager_class.return_value = mock_repo_manager
+
+            # Mock the repository detection
+            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
+                success=True, result={"repository_path": str(temp_config_dir)}
+            )
+
+            # Mock the search results
+            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
+                success=True, matches=[]
+            )
 
             result = cli_runner.invoke(main.app, ["search", "test"])
             assert result.exit_code == 0
-            assert "Search functionality not yet implemented" in result.stdout
+            assert "No commits found matching 'test'" in result.stdout
+
+    def test_search_command_with_repo_name(self, cli_runner, temp_config_dir):
+        """Test search command with repository name."""
+        with (
+            mock.patch(
+                "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
+            ),
+            mock.patch(
+                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
+            ) as mock_repo_manager_class,
+            mock.patch(
+                "ca_bhfuil.core.async_config.AsyncConfigManager"
+            ) as mock_config_manager_class,
+        ):
+            mock_repo_manager = mock.AsyncMock()
+            mock_repo_manager_class.return_value = mock_repo_manager
+
+            mock_config_manager = mock.AsyncMock()
+            mock_config_manager_class.return_value = mock_config_manager
+
+            # Mock repository config lookup
+            mock_repo_config = mock.AsyncMock()
+            mock_repo_config.repo_path = temp_config_dir / "test-repo"
+            mock_config_manager.get_repository_config_by_name.return_value = (
+                mock_repo_config
+            )
+
+            # Mock the repository detection
+            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
+                success=True, result={"repository_path": str(temp_config_dir)}
+            )
+
+            # Mock the search results
+            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
+                success=True, matches=[]
+            )
+
+            result = cli_runner.invoke(
+                main.app, ["search", "test", "--repo", "test-repo"]
+            )
+            assert result.exit_code == 0
+            assert "No commits found matching 'test'" in result.stdout
+
+    def test_search_command_repo_not_found(self, cli_runner, temp_config_dir):
+        """Test search command with non-existent repository name."""
+        with (
+            mock.patch(
+                "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
+            ),
+            mock.patch(
+                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
+            ) as mock_repo_manager_class,
+            mock.patch(
+                "ca_bhfuil.core.async_config.AsyncConfigManager"
+            ) as mock_config_manager_class,
+        ):
+            mock_repo_manager = mock.AsyncMock()
+            mock_repo_manager_class.return_value = mock_repo_manager
+
+            mock_config_manager = mock.AsyncMock()
+            mock_config_manager_class.return_value = mock_config_manager
+
+            # Mock repository config lookup returning None (not found)
+            mock_config_manager.get_repository_config_by_name.return_value = None
+
+            result = cli_runner.invoke(
+                main.app, ["search", "test", "--repo", "nonexistent"]
+            )
+            assert result.exit_code == 1
+            assert (
+                "Repository 'nonexistent' not found in configuration" in result.stdout
+            )
+
+    def test_search_command_multi_word(self, cli_runner, temp_config_dir):
+        """Test search command with multiple words (no quotes needed)."""
+        with (
+            mock.patch(
+                "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
+            ),
+            mock.patch(
+                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
+            ) as mock_repo_manager_class,
+        ):
+            mock_repo_manager = mock.AsyncMock()
+            mock_repo_manager_class.return_value = mock_repo_manager
+
+            # Mock the repository detection
+            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
+                success=True, result={"repository_path": str(temp_config_dir)}
+            )
+
+            # Mock the search results
+            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
+                success=True, matches=[]
+            )
+
+            # Test multi-word search without quotes
+            result = cli_runner.invoke(main.app, ["search", "fix", "memory", "leak"])
+            assert result.exit_code == 0
+            assert "No commits found matching 'fix memory leak'" in result.stdout
+
+            # Verify the search was called with joined words
+            mock_repo_manager.search_commits.assert_called_once()
+            call_args = mock_repo_manager.search_commits.call_args
+            # The second argument should be the joined query string
+            assert call_args[0][1] == "fix memory leak"
 
     def test_status_command(self, cli_runner, temp_config_dir):
         """Test status command."""
