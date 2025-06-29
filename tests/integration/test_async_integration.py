@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from ca_bhfuil.core.async_config import AsyncConfigManager
-from ca_bhfuil.storage.async_database import AsyncDatabaseManager
+from ca_bhfuil.storage.sqlmodel_manager import SQLModelDatabaseManager
 
 
 @pytest.mark.asyncio
@@ -42,8 +42,8 @@ async def test_async_database_manager():
         db_path = pathlib.Path(tmp.name)
 
     try:
-        manager = AsyncDatabaseManager(db_path)
-        await manager.initialize(max_workers=2)
+        manager = SQLModelDatabaseManager(db_path)
+        await manager.initialize()
 
         # Test adding a repository
         repo_id = await manager.add_repository("/test/path", "test-repo")
@@ -52,13 +52,13 @@ async def test_async_database_manager():
         # Test getting repository by path
         repo = await manager.get_repository("/test/path")
         assert repo is not None
-        assert repo["name"] == "test-repo"
+        assert repo.name == "test-repo"
 
         # Test getting stats
         stats = await manager.get_stats()
         assert isinstance(stats, dict)
 
-        await manager.shutdown()
+        await manager.close()
 
     finally:
         # Clean up

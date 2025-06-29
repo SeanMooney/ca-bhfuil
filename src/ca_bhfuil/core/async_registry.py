@@ -8,9 +8,8 @@ from loguru import logger
 
 from ca_bhfuil.core import async_config
 from ca_bhfuil.core import config
-from ca_bhfuil.core import registry
 from ca_bhfuil.core.models import commit as commit_models
-from ca_bhfuil.storage import async_database
+from ca_bhfuil.storage import sqlmodel_manager
 
 
 class AsyncRepositoryRegistry:
@@ -19,16 +18,16 @@ class AsyncRepositoryRegistry:
     def __init__(
         self,
         config_manager: async_config.AsyncConfigManager | None = None,
-        db_manager: async_database.AsyncDatabaseManager | None = None,
+        db_manager: sqlmodel_manager.SQLModelDatabaseManager | None = None,
     ) -> None:
         """Initialize async repository registry.
 
         Args:
             config_manager: Async configuration manager instance
-            db_manager: Async database manager instance
+            db_manager: SQLModel database manager instance
         """
         self.config_manager = config_manager or async_config.AsyncConfigManager()
-        self.db_manager = db_manager or async_database.AsyncDatabaseManager()
+        self.db_manager = db_manager or sqlmodel_manager.SQLModelDatabaseManager()
         self._lock = asyncio.Lock()
         logger.debug("Initialized async repository registry")
 
@@ -47,14 +46,11 @@ class AsyncRepositoryRegistry:
                 f"Registering repository: {repo_config.name} at {repo_path_str}"
             )
 
-            # Add to database using async executor
-            result = await self.db_manager.run_in_executor(
-                lambda: self.db_manager.sync_manager.add_repository(
-                    path=repo_path_str,
-                    name=repo_config.name,
-                )
+            # Add to database using SQLModel
+            repo_id = await self.db_manager.add_repository(
+                path=repo_path_str,
+                name=repo_config.name,
             )
-            repo_id = typing.cast("int", result)
 
             logger.debug(f"Repository {repo_config.name} registered with ID {repo_id}")
             return repo_id
@@ -78,14 +74,19 @@ class AsyncRepositoryRegistry:
 
         # Get database state
         repo_path_str = str(repo_config.repo_path)
-        db_state = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.get_repository(repo_path_str)
-        )
+        db_repo = await self.db_manager.get_repository(repo_path_str)
 
-        if db_state:
+        if db_repo:
             # Merge configuration and database state
             return {
-                **db_state,
+                "id": db_repo.id,
+                "path": db_repo.path,
+                "name": db_repo.name,
+                "last_analyzed": db_repo.last_analyzed,
+                "commit_count": db_repo.commit_count,
+                "branch_count": db_repo.branch_count,
+                "created_at": db_repo.created_at,
+                "updated_at": db_repo.updated_at,
                 "config": {
                     "name": repo_config.name,
                     "source": repo_config.source,
@@ -97,6 +98,7 @@ class AsyncRepositoryRegistry:
                 "is_git_repo": (repo_config.repo_path / ".git").exists()
                 if repo_config.repo_path.exists()
                 else False,
+                "registered": True,
             }
         # Repository not in database yet
         logger.debug(f"Repository {repo_name} not found in database")
@@ -150,16 +152,12 @@ class AsyncRepositoryRegistry:
             return False
 
         repo_path_str = str(repo_config.repo_path)
-        db_state = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.get_repository(repo_path_str)
-        )
+        db_repo = await self.db_manager.get_repository(repo_path_str)
 
-        if db_state:
-            repo_id = db_state["id"]
-            await self.db_manager.run_in_executor(
-                lambda: self.db_manager.sync_manager.update_repository_stats(
-                    repo_id, commit_count, branch_count
-                )
+        if db_repo:
+            repo_id = db_repo.id or 0
+            await self.db_manager.update_repository_stats(
+                repo_id, commit_count, branch_count
             )
             logger.debug(
                 f"Updated stats for {repo_name}: {commit_count} commits, {branch_count} branches"
@@ -186,15 +184,13 @@ class AsyncRepositoryRegistry:
             return False
 
         repo_path_str = str(repo_config.repo_path)
-        db_state = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.get_repository(repo_path_str)
-        )
+        db_repo = await self.db_manager.get_repository(repo_path_str)
 
-        if not db_state:
+        if not db_repo:
             # Register repository first
             repo_id = await self.register_repository(repo_config)
         else:
-            repo_id = db_state["id"]
+            repo_id = db_repo.id or 0
 
         # Convert commit info to database format
         commit_data = {
@@ -213,9 +209,7 @@ class AsyncRepositoryRegistry:
         }
 
         try:
-            await self.db_manager.run_in_executor(
-                lambda: self.db_manager.sync_manager.add_commit(repo_id, commit_data)
-            )
+            await self.db_manager.add_commit(repo_id, commit_data)
             logger.debug(
                 f"Added commit {commit_info.short_sha} to repository {repo_name}"
             )
@@ -248,19 +242,15 @@ class AsyncRepositoryRegistry:
             return []
 
         repo_path_str = str(repo_config.repo_path)
-        db_state = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.get_repository(repo_path_str)
-        )
+        db_repo = await self.db_manager.get_repository(repo_path_str)
 
-        if not db_state:
+        if not db_repo:
             logger.debug(f"Repository {repo_name} not found in database")
             return []
 
-        repo_id = db_state["id"]
-        commit_data_list = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.find_commits(
-                repo_id, sha_pattern, message_pattern, limit
-            )
+        repo_id = db_repo.id or 0
+        commit_data_list = await self.db_manager.find_commits(
+            repo_id, sha_pattern, message_pattern, limit
         )
 
         # Convert database results to CommitInfo models
@@ -268,19 +258,19 @@ class AsyncRepositoryRegistry:
         for commit_data in commit_data_list:
             try:
                 commit_info = commit_models.CommitInfo(
-                    sha=commit_data["sha"],
-                    short_sha=commit_data["short_sha"],
-                    message=commit_data["message"],
-                    author_name=commit_data["author_name"],
-                    author_email=commit_data["author_email"],
-                    author_date=commit_data["author_date"],
-                    committer_name=commit_data["committer_name"],
-                    committer_email=commit_data["committer_email"],
-                    committer_date=commit_data["committer_date"],
+                    sha=commit_data.sha,
+                    short_sha=commit_data.short_sha,
+                    message=commit_data.message,
+                    author_name=commit_data.author_name,
+                    author_email=commit_data.author_email,
+                    author_date=commit_data.author_date,
+                    committer_name=commit_data.committer_name,
+                    committer_email=commit_data.committer_email,
+                    committer_date=commit_data.committer_date,
                     parents=[],  # Not stored in simple schema
-                    files_changed=commit_data.get("files_changed"),
-                    insertions=commit_data.get("insertions"),
-                    deletions=commit_data.get("deletions"),
+                    files_changed=commit_data.files_changed,
+                    insertions=commit_data.insertions,
+                    deletions=commit_data.deletions,
                 )
                 commits.append(commit_info)
             except Exception as e:
@@ -295,9 +285,7 @@ class AsyncRepositoryRegistry:
         Returns:
             Registry statistics
         """
-        db_stats = await self.db_manager.run_in_executor(
-            lambda: self.db_manager.sync_manager.get_stats()
-        )
+        db_stats = await self.db_manager.get_stats()
         config_stats = await self.config_manager.load_configuration()
 
         return {
@@ -305,7 +293,7 @@ class AsyncRepositoryRegistry:
             "registered_repositories": db_stats["repositories"],
             "total_commits": db_stats["commits"],
             "total_branches": db_stats["branches"],
-            "database_path": db_stats["database_path"],
+            "database_path": str(self.db_manager.engine.db_path),
         }
 
     async def sync_repository_state(self, repo_name: str) -> dict[str, typing.Any]:
@@ -344,20 +332,6 @@ class AsyncRepositoryRegistry:
             "is_git_repo": is_git_repo,
             "registered": repo_state.get("registered", True),
         }
-
-    def get_sync_registry(self) -> registry.RepositoryRegistry:
-        """Get synchronous version of the registry for compatibility.
-
-        Returns:
-            Synchronous repository registry
-        """
-        # Create sync versions of managers
-        sync_config_manager = config.ConfigManager(self.config_manager.config_dir)
-
-        return registry.RepositoryRegistry(
-            config_manager=sync_config_manager,
-            db_manager=self.db_manager.sync_manager,
-        )
 
 
 # Global async registry instance
