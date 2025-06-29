@@ -42,20 +42,23 @@ async def test_async_database_manager():
         db_path = pathlib.Path(tmp.name)
 
     try:
-        manager = AsyncDatabaseManager(str(db_path))
-        await manager.connect(pool_size=2)
+        manager = AsyncDatabaseManager(db_path)
+        await manager.initialize(max_workers=2)
 
-        # Test creating a simple table
-        await manager.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+        # Test adding a repository
+        repo_id = await manager.add_repository("/test/path", "test-repo")
+        assert isinstance(repo_id, int)
 
-        # Test inserting data
-        await manager.execute("INSERT INTO test (name) VALUES (?)", ["test_name"])
+        # Test getting repository by path
+        repo = await manager.get_repository("/test/path")
+        assert repo is not None
+        assert repo["name"] == "test-repo"
 
-        # Test querying data
-        await manager.execute("SELECT * FROM test")
-        # Note: cursor handling may need adjustment based on actual implementation
+        # Test getting stats
+        stats = await manager.get_stats()
+        assert isinstance(stats, dict)
 
-        await manager.close()
+        await manager.shutdown()
 
     finally:
         # Clean up

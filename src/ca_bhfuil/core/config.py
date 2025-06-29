@@ -190,6 +190,14 @@ class ConfigManager:
                 return repo
         return None
 
+    def get_repository_config_by_name(self, name: str) -> RepositoryConfig | None:
+        """Get configuration for specific repository by name."""
+        config = self.load_configuration()
+        for repo in config.repos:
+            if repo.name == name:
+                return repo
+        return None
+
     def validate_configuration(self) -> list[str]:
         """Validate configuration and return list of errors."""
         errors = []

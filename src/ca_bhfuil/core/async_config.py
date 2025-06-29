@@ -62,6 +62,16 @@ class AsyncConfigManager:
                 return repo
         return None
 
+    async def get_repository_config_by_name(
+        self, name: str
+    ) -> config.RepositoryConfig | None:
+        """Get configuration for specific repository by name."""
+        global_config = await self.load_configuration()
+        for repo in global_config.repos:
+            if repo.name == name:
+                return repo
+        return None
+
     async def validate_configuration(self) -> list[str]:
         """Validate configuration and return list of errors."""
         errors = []

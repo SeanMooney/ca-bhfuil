@@ -476,47 +476,62 @@ class TestAsyncDatabaseManager:
     def temp_db_path(self):
         """Provide temporary database path."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            yield tmp.name
+            yield pathlib.Path(tmp.name)
 
     async def test_connection_and_execution(self, temp_db_path):
-        """Test database connection and execution."""
+        """Test database initialization and operations."""
         manager = async_database.AsyncDatabaseManager(temp_db_path)
 
-        await manager.connect(pool_size=2)
+        await manager.initialize(max_workers=2)
 
-        # Test creating a table
-        cursor = await manager.execute(
-            "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)"
-        )
-        assert cursor is not None
+        # Test adding a repository
+        repo_id = await manager.add_repository("/test/path", "test-repo")
+        assert isinstance(repo_id, int)
+        assert repo_id > 0
 
-        # Test inserting data
-        cursor = await manager.execute(
-            "INSERT INTO test (name) VALUES (?)", ["test_name"]
-        )
-        assert cursor is not None
+        # Test getting the repository
+        repo_data = await manager.get_repository("/test/path")
+        assert repo_data is not None
+        assert repo_data["name"] == "test-repo"
 
-        await manager.close()
+        await manager.shutdown()
 
     async def test_execution_without_connection(self, temp_db_path):
-        """Test execution without connecting first."""
+        """Test operations are auto-initialized when needed."""
         manager = async_database.AsyncDatabaseManager(temp_db_path)
 
-        with pytest.raises(ConnectionError, match="Database not connected"):
-            await manager.execute("SELECT 1")
+        # Operations should auto-initialize the executor
+        repo_id = await manager.add_repository("/test/path", "test-repo")
+        assert isinstance(repo_id, int)
+
+        await manager.shutdown()
 
     async def test_connection_pool_management(self, temp_db_path):
-        """Test connection pool management."""
+        """Test executor pool management."""
         manager = async_database.AsyncDatabaseManager(temp_db_path)
 
-        await manager.connect(pool_size=1)
+        await manager.initialize(max_workers=1)
 
-        # Test that we can execute multiple queries
-        await manager.execute("CREATE TABLE test (id INTEGER)")
-        await manager.execute("INSERT INTO test (id) VALUES (1)")
-        await manager.execute("SELECT * FROM test")
+        # Test that we can execute multiple database operations
+        repo_id = await manager.add_repository("/test/path", "test-repo")
+        await manager.update_repository_stats(repo_id, 100, 5)
 
-        await manager.close()
+        # Test adding commit data
+        commit_data = {
+            "sha": "abc123",
+            "short_sha": "abc123",
+            "message": "Test commit",
+            "author_name": "Test",
+            "author_email": "test@example.com",
+            "author_date": "2024-01-01T12:00:00+00:00",
+            "committer_name": "Test",
+            "committer_email": "test@example.com",
+            "committer_date": "2024-01-01T12:00:00+00:00",
+        }
+        commit_id = await manager.add_commit(repo_id, commit_data)
+        assert isinstance(commit_id, int)
+
+        await manager.shutdown()
 
 
 @pytest.mark.asyncio
