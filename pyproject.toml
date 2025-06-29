@@ -26,6 +26,10 @@ dependencies = [
     # Core Framework
     "pydantic>=2.0.0",
 
+    # Database ORM
+    "sqlmodel>=0.0.20",
+    "sqlalchemy[asyncio]>=2.0.0",
+
     # High-Performance Git Analysis
     "pygit2>=1.13.0",
     "diskcache>=5.6.0",
@@ -195,9 +199,26 @@ module = [
     "fastmcp.*",
     "pydantic_ai.*",
     "loguru.*",
+    "sqlmodel.*",
+    "sqlalchemy.*",
 ]
 ignore_missing_imports = true
 disallow_untyped_calls = false
+
+# SQLModel has some typing complexities that require special handling
+[[tool.mypy.overrides]]
+module = "ca_bhfuil.storage.database.models"
+disable_error_code = ["misc", "call-arg"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ca_bhfuil.storage.database.repository"
+disable_error_code = ["no-any-return", "unused-ignore", "arg-type"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ca_bhfuil.storage.database.engine"
+ignore_missing_imports = true
 
 # Additional override for pygit2 to ignore all typing issues
 [[tool.mypy.overrides]]

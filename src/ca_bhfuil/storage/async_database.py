@@ -20,7 +20,7 @@ class AsyncDatabaseManager:
         Args:
             db_path: Optional database path override
         """
-        self.db_path = db_path or (config.get_cache_dir() / "ca-bhfuil.db")
+        self.db_path = db_path or (config.get_state_dir() / "ca-bhfuil.db")
         self.sync_manager = schema.DatabaseManager(self.db_path)
         self._executor: concurrent.futures.ThreadPoolExecutor | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
