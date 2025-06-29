@@ -8,9 +8,7 @@ import pydantic
 class CommitInfo(pydantic.BaseModel):
     """Information about a git commit."""
 
-    model_config = pydantic.ConfigDict(
-        json_encoders={datetime.datetime: lambda v: v.isoformat()}
-    )
+    model_config = pydantic.ConfigDict()
 
     sha: str = pydantic.Field(..., description="Full commit SHA hash")
     short_sha: str = pydantic.Field(
@@ -19,11 +17,13 @@ class CommitInfo(pydantic.BaseModel):
     message: str = pydantic.Field(..., description="Commit message")
     author_name: str = pydantic.Field(..., description="Author name")
     author_email: str = pydantic.Field(..., description="Author email")
-    author_date: datetime.datetime = pydantic.Field(..., description="Author date")
+    author_date: datetime.datetime = pydantic.Field(
+        ..., description="Author date", json_schema_extra={"format": "date-time"}
+    )
     committer_name: str = pydantic.Field(..., description="Committer name")
     committer_email: str = pydantic.Field(..., description="Committer email")
     committer_date: datetime.datetime = pydantic.Field(
-        ..., description="Committer date"
+        ..., description="Committer date", json_schema_extra={"format": "date-time"}
     )
     parents: list[str] = pydantic.Field(
         default_factory=list, description="Parent commit SHAs"
