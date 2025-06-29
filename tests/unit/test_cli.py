@@ -86,10 +86,28 @@ class TestRepoCommands:
             mock.patch(
                 "ca_bhfuil.core.git.clone.AsyncRepositoryCloner"
             ) as mock_cloner_class,
+            mock.patch(
+                "ca_bhfuil.cli.async_bridge.with_progress"
+            ) as mock_with_progress,
         ):
             mock_manager = mock.AsyncMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_repository_config.return_value = None
+
+            # Mock the configuration object with non-async repos attribute
+            mock_config = mock.Mock()
+            mock_config.repos = []  # Use a real list to avoid async mock issues
+            # Use side_effect to ensure the mock object is returned directly
+            mock_manager.load_configuration = mock.AsyncMock(return_value=mock_config)
+            mock_manager.save_configuration = mock.AsyncMock(return_value=None)
+
+            # Mock with_progress to return the awaited result directly
+            async def mock_with_progress_func(coro, *args):
+                if hasattr(coro, "__await__"):
+                    return await coro
+                return coro
+
+            mock_with_progress.side_effect = mock_with_progress_func
 
             mock_cloner = mock.AsyncMock()
             mock_cloner_class.return_value = mock_cloner
@@ -114,10 +132,28 @@ class TestRepoCommands:
             mock.patch(
                 "ca_bhfuil.core.git.clone.AsyncRepositoryCloner"
             ) as mock_cloner_class,
+            mock.patch(
+                "ca_bhfuil.cli.async_bridge.with_progress"
+            ) as mock_with_progress,
         ):
             mock_manager = mock.AsyncMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_repository_config.return_value = None
+
+            # Mock the configuration object with non-async repos attribute
+            mock_config = mock.Mock()
+            mock_config.repos = []  # Use a real list to avoid async mock issues
+            # Use side_effect to ensure the mock object is returned directly
+            mock_manager.load_configuration = mock.AsyncMock(return_value=mock_config)
+            mock_manager.save_configuration = mock.AsyncMock(return_value=None)
+
+            # Mock with_progress to return the awaited result directly
+            async def mock_with_progress_func(coro, *args):
+                if hasattr(coro, "__await__"):
+                    return await coro
+                return coro
+
+            mock_with_progress.side_effect = mock_with_progress_func
 
             mock_cloner = mock.AsyncMock()
             mock_cloner_class.return_value = mock_cloner
@@ -181,6 +217,8 @@ class TestMainCommands:
         ):
             mock_repo_manager = mock.AsyncMock()
             mock_repo_manager_class.return_value = mock_repo_manager
+            # Make shutdown a regular mock (not async) to avoid warnings
+            mock_repo_manager.shutdown = mock.Mock(return_value=None)
 
             # Mock the repository detection
             mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
@@ -211,6 +249,8 @@ class TestMainCommands:
         ):
             mock_repo_manager = mock.AsyncMock()
             mock_repo_manager_class.return_value = mock_repo_manager
+            # Make shutdown a regular mock (not async) to avoid warnings
+            mock_repo_manager.shutdown = mock.Mock(return_value=None)
 
             mock_config_manager = mock.AsyncMock()
             mock_config_manager_class.return_value = mock_config_manager
@@ -253,6 +293,8 @@ class TestMainCommands:
         ):
             mock_repo_manager = mock.AsyncMock()
             mock_repo_manager_class.return_value = mock_repo_manager
+            # Make shutdown a regular mock (not async) to avoid warnings
+            mock_repo_manager.shutdown = mock.Mock(return_value=None)
 
             mock_config_manager = mock.AsyncMock()
             mock_config_manager_class.return_value = mock_config_manager
@@ -280,6 +322,8 @@ class TestMainCommands:
         ):
             mock_repo_manager = mock.AsyncMock()
             mock_repo_manager_class.return_value = mock_repo_manager
+            # Make shutdown a regular mock (not async) to avoid warnings
+            mock_repo_manager.shutdown = mock.Mock(return_value=None)
 
             # Mock the repository detection
             mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
