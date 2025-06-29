@@ -17,7 +17,7 @@ from ca_bhfuil.core import async_repository
 from ca_bhfuil.core import async_tasks
 from ca_bhfuil.core.models import progress
 from ca_bhfuil.integrations import async_http
-from ca_bhfuil.storage import async_database
+from ca_bhfuil.storage import sqlmodel_manager
 
 
 @pytest.mark.asyncio
@@ -480,9 +480,9 @@ class TestAsyncDatabaseManager:
 
     async def test_connection_and_execution(self, temp_db_path):
         """Test database initialization and operations."""
-        manager = async_database.AsyncDatabaseManager(temp_db_path)
+        manager = sqlmodel_manager.SQLModelDatabaseManager(temp_db_path)
 
-        await manager.initialize(max_workers=2)
+        await manager.initialize()
 
         # Test adding a repository
         repo_id = await manager.add_repository("/test/path", "test-repo")
@@ -492,46 +492,48 @@ class TestAsyncDatabaseManager:
         # Test getting the repository
         repo_data = await manager.get_repository("/test/path")
         assert repo_data is not None
-        assert repo_data["name"] == "test-repo"
+        assert repo_data.name == "test-repo"
 
-        await manager.shutdown()
+        await manager.close()
 
     async def test_execution_without_connection(self, temp_db_path):
         """Test operations are auto-initialized when needed."""
-        manager = async_database.AsyncDatabaseManager(temp_db_path)
+        manager = sqlmodel_manager.SQLModelDatabaseManager(temp_db_path)
 
-        # Operations should auto-initialize the executor
+        # Operations should auto-initialize the database
         repo_id = await manager.add_repository("/test/path", "test-repo")
         assert isinstance(repo_id, int)
 
-        await manager.shutdown()
+        await manager.close()
 
     async def test_connection_pool_management(self, temp_db_path):
-        """Test executor pool management."""
-        manager = async_database.AsyncDatabaseManager(temp_db_path)
+        """Test database connection management."""
+        manager = sqlmodel_manager.SQLModelDatabaseManager(temp_db_path)
 
-        await manager.initialize(max_workers=1)
+        await manager.initialize()
 
         # Test that we can execute multiple database operations
         repo_id = await manager.add_repository("/test/path", "test-repo")
         await manager.update_repository_stats(repo_id, 100, 5)
 
         # Test adding commit data
+        import datetime
+
         commit_data = {
             "sha": "abc123",
             "short_sha": "abc123",
             "message": "Test commit",
             "author_name": "Test",
             "author_email": "test@example.com",
-            "author_date": "2024-01-01T12:00:00+00:00",
+            "author_date": datetime.datetime(2024, 1, 1, 12, 0, 0),
             "committer_name": "Test",
             "committer_email": "test@example.com",
-            "committer_date": "2024-01-01T12:00:00+00:00",
+            "committer_date": datetime.datetime(2024, 1, 1, 12, 0, 0),
         }
         commit_id = await manager.add_commit(repo_id, commit_data)
         assert isinstance(commit_id, int)
 
-        await manager.shutdown()
+        await manager.close()
 
 
 @pytest.mark.asyncio

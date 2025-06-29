@@ -3,12 +3,10 @@
 from ca_bhfuil.storage.database import engine
 from ca_bhfuil.storage.database import models
 from ca_bhfuil.storage.database import repository
-from ca_bhfuil.storage.database import schema
 
 
 __all__ = [
     "engine",
     "models",
     "repository",
-    "schema",
 ]

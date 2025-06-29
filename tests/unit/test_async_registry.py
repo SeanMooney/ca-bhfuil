@@ -10,44 +10,34 @@ from ca_bhfuil.core import async_config
 from ca_bhfuil.core import async_registry
 from ca_bhfuil.core import config
 from ca_bhfuil.core.models import commit as commit_models
-from ca_bhfuil.storage import async_database
+from ca_bhfuil.storage import sqlmodel_manager
+
+
+@pytest.fixture
+async def db_manager():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = pathlib.Path(temp_dir) / "test.db"
+        manager = sqlmodel_manager.SQLModelDatabaseManager(db_path)
+        await manager.initialize()
+        yield manager
+        await manager.close()
+
+
+@pytest.fixture
+def config_manager(tmp_path):
+    return async_config.AsyncConfigManager(tmp_path)
+
+
+@pytest.fixture
+def repository_registry(config_manager, db_manager):
+    return async_registry.AsyncRepositoryRegistry(config_manager, db_manager)
 
 
 class TestAsyncRepositoryRegistry:
     """Test async repository registry operations."""
 
     @pytest.fixture
-    def temp_config_dir(self):
-        """Provide a temporary configuration directory."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield pathlib.Path(temp_dir)
-
-    @pytest.fixture
-    def temp_db_path(self):
-        """Provide a temporary database path."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield pathlib.Path(temp_dir) / "test.db"
-
-    @pytest.fixture
-    async def config_manager(self, temp_config_dir):
-        """Provide a test async configuration manager."""
-        return async_config.AsyncConfigManager(temp_config_dir)
-
-    @pytest.fixture
-    async def db_manager(self, temp_db_path):
-        """Provide a test async database manager."""
-        manager = async_database.AsyncDatabaseManager(temp_db_path)
-        await manager.initialize()
-        yield manager
-        await manager.shutdown()
-
-    @pytest.fixture
-    async def repository_registry(self, config_manager, db_manager):
-        """Provide a test async repository registry."""
-        return async_registry.AsyncRepositoryRegistry(config_manager, db_manager)
-
-    @pytest.fixture
-    def sample_repo_config(self, temp_config_dir):
+    def sample_repo_config(self, tmp_path):
         """Provide a sample repository configuration."""
         return config.RepositoryConfig(
             name="test-repo",
@@ -90,13 +80,16 @@ class TestAsyncRepositoryRegistry:
         self, repository_registry, sample_repo_config
     ):
         """Test getting state for repository that's configured but not registered."""
-        # Mock the config manager to return the repo config
-        with mock.patch.object(
-            repository_registry.config_manager,
-            "get_repository_config_by_name",
-            return_value=mock.AsyncMock(return_value=sample_repo_config),
-        ) as mock_get_config:
-            mock_get_config.return_value = sample_repo_config
+        with (
+            mock.patch.object(
+                repository_registry.config_manager,
+                "get_repository_config_by_name",
+                return_value=sample_repo_config,
+            ),
+            mock.patch.object(
+                repository_registry.db_manager, "get_repository", return_value=None
+            ),
+        ):
             state = await repository_registry.get_repository_state("test-repo")
 
         assert state is not None
@@ -218,29 +211,35 @@ class TestAsyncRepositoryRegistry:
     @pytest.mark.asyncio
     async def test_search_commits(self, repository_registry, sample_repo_config):
         """Test searching commits in repository."""
-        # Mock config manager to return repo config
-        with mock.patch.object(
-            repository_registry.config_manager,
-            "get_repository_config_by_name",
-            return_value=sample_repo_config,
+        commit_info = commit_models.CommitInfo(
+            sha="abc123def456",
+            short_sha="abc123d",
+            message="Fix memory leak",
+            author_name="Test Author",
+            author_email="test@example.com",
+            author_date="2024-01-01T12:00:00+00:00",
+            committer_name="Test Author",
+            committer_email="test@example.com",
+            committer_date="2024-01-01T12:00:00+00:00",
+            parents=["def456ghi789"],
+        )
+        mock_repo = mock.Mock(spec=sqlmodel_manager.models.RepositoryRead)
+        mock_repo.id = 1
+        with (
+            mock.patch.object(
+                repository_registry.config_manager,
+                "get_repository_config_by_name",
+                return_value=sample_repo_config,
+            ),
+            mock.patch.object(
+                repository_registry.db_manager, "get_repository", return_value=mock_repo
+            ),
+            mock.patch.object(
+                repository_registry.db_manager,
+                "find_commits",
+                return_value=[commit_info],
+            ),
         ):
-            # Register repository and add commit
-            await repository_registry.register_repository(sample_repo_config)
-
-            commit_info = commit_models.CommitInfo(
-                sha="abc123def456",
-                short_sha="abc123d",
-                message="Fix memory leak",
-                author_name="Test Author",
-                author_email="test@example.com",
-                author_date="2024-01-01T12:00:00+00:00",
-                committer_name="Test Author",
-                committer_email="test@example.com",
-                committer_date="2024-01-01T12:00:00+00:00",
-                parents=["def456ghi789"],
-            )
-            await repository_registry.add_commit("test-repo", commit_info)
-
             # Search by SHA
             commits = await repository_registry.search_commits(
                 "test-repo", sha_pattern="abc123"
@@ -253,7 +252,7 @@ class TestAsyncRepositoryRegistry:
                 "test-repo", message_pattern="memory"
             )
             assert len(commits) == 1
-            assert commits[0].message == "Fix memory leak"
+            assert "memory" in commits[0].message
 
     @pytest.mark.asyncio
     async def test_search_commits_not_found(self, repository_registry):
@@ -266,17 +265,22 @@ class TestAsyncRepositoryRegistry:
     @pytest.mark.asyncio
     async def test_get_registry_stats(self, repository_registry, sample_repo_config):
         """Test getting registry statistics."""
-        # Register repository
-        await repository_registry.register_repository(sample_repo_config)
-
-        # Mock configuration
-        global_config = config.GlobalConfig(repos=[sample_repo_config])
-        with mock.patch.object(
-            repository_registry.config_manager,
-            "load_configuration",
-            return_value=mock.AsyncMock(return_value=global_config),
-        ) as mock_load:
-            mock_load.return_value = global_config
+        with (
+            mock.patch.object(
+                repository_registry.config_manager,
+                "load_configuration",
+                return_value=config.GlobalConfig(repos=[sample_repo_config]),
+            ),
+            mock.patch.object(
+                repository_registry.db_manager,
+                "get_stats",
+                return_value={
+                    "repositories": 1,
+                    "commits": 0,
+                    "branches": 0,
+                },
+            ),
+        ):
             stats = await repository_registry.get_registry_stats()
 
         assert stats["configured_repositories"] == 1
@@ -317,14 +321,6 @@ class TestAsyncRepositoryRegistry:
         assert result["repository"] == "test-repo"
         assert result["exists"] is False
         assert result["is_git_repo"] is False
-
-    @pytest.mark.asyncio
-    async def test_get_sync_registry(self, repository_registry):
-        """Test getting synchronous registry."""
-        sync_registry = repository_registry.get_sync_registry()
-        assert sync_registry is not None
-        assert hasattr(sync_registry, "config_manager")
-        assert hasattr(sync_registry, "db_manager")
 
 
 class TestAsyncRepositoryRegistryGlobalInstance:

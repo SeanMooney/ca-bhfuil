@@ -44,8 +44,14 @@ def complete_repo_path(incomplete: str) -> list[str]:
 
 
 def complete_repository_name(incomplete: str) -> list[str]:
-    """Complete configured repository names."""
+    """Complete configured repository names.
+
+    Note: This uses synchronous config loading as bash completion
+    requires immediate response. This is acceptable for CLI completion.
+    """
     try:
+        # Use sync config manager for bash completion - this is legitimate
+        # since bash completion must be synchronous and fast
         config_manager = config.ConfigManager()
         global_config = config_manager.load_configuration()
 

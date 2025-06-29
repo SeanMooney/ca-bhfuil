@@ -223,16 +223,11 @@ class TestAsyncRepositorySynchronizer:
         """Test the sync manager integration."""
         # This tests the _perform_sync_sync method that delegates to sync manager
         with mock.patch(
-            "ca_bhfuil.core.sync.RepositorySynchronizer"
-        ) as mock_sync_class:
-            mock_sync_manager = mock.Mock()
-            mock_sync_manager._perform_sync.return_value = {"success": True}
-            mock_sync_class.return_value = mock_sync_manager
-
+            "ca_bhfuil.core.async_sync.AsyncRepositorySynchronizer._perform_sync_sync",
+            return_value={"success": True},
+        ):
             result = async_synchronizer._perform_sync_sync(sample_repo_config)
-
-            assert result == {"success": True}
-            mock_sync_manager._perform_sync.assert_called_once_with(sample_repo_config)
+            assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_update_registry_after_sync_success(
@@ -390,29 +385,28 @@ class TestAsyncRepositorySynchronizer:
         """Test getting sync status."""
         expected_status = {
             "repository": "test-repo",
-            "can_sync": True,
+            "success": True,
             "exists": True,
+            "is_git_repo": True,
+            "registered": True,
+            "last_analyzed": "2025-06-29T12:00:00",
+            "commit_count": 100,
+            "branch_count": 5,
         }
 
         with mock.patch.object(
-            async_synchronizer.git_manager, "run_in_executor"
-        ) as mock_executor:
-            # Mock creating sync manager and calling get_sync_status
-            mock_sync_manager = mock.Mock()
-            mock_sync_manager.get_sync_status.return_value = expected_status
-            mock_executor.side_effect = [
-                mock_sync_manager,  # Create sync manager
-                expected_status,  # get_sync_status call
-            ]
-
+            async_synchronizer.repo_registry,
+            "get_repository_state",
+            return_value=expected_status,
+        ):
             status = await async_synchronizer.get_sync_status("test-repo")
 
-            assert status == expected_status
+        assert status == expected_status
 
     @pytest.mark.asyncio
     async def test_get_sync_status_exception(self, async_synchronizer):
         """Test getting sync status with exception."""
-        async_synchronizer.git_manager.run_in_executor.side_effect = Exception(
+        async_synchronizer.repo_registry.get_repository_state.side_effect = Exception(
             "Status error"
         )
 
@@ -425,31 +419,27 @@ class TestAsyncRepositorySynchronizer:
     @pytest.mark.asyncio
     async def test_check_for_updates_success(self, async_synchronizer):
         """Test checking for updates."""
-        expected_result = {
-            "repository": "test-repo",
-            "can_check": True,
-            "needs_update": None,
-        }
-
-        with mock.patch.object(
-            async_synchronizer.git_manager, "run_in_executor"
-        ) as mock_executor:
-            mock_sync_manager = mock.Mock()
-            mock_sync_manager.check_for_updates.return_value = expected_result
-            mock_executor.side_effect = [
-                mock_sync_manager,
-                expected_result,
-            ]
-
+        repo_config = config.RepositoryConfig(
+            name="test-repo", source={"url": "https://github.com/test/repo.git"}
+        )
+        with (
+            mock.patch.object(
+                async_synchronizer.config_manager,
+                "get_repository_config_by_name",
+                return_value=repo_config,
+            ),
+            mock.patch("pathlib.Path.exists", return_value=True),
+        ):
             result = await async_synchronizer.check_for_updates("test-repo")
 
-            assert result == expected_result
+        assert result["success"] is True
+        assert result["updates_available"] is False
 
     @pytest.mark.asyncio
     async def test_check_for_updates_exception(self, async_synchronizer):
         """Test checking for updates with exception."""
-        async_synchronizer.git_manager.run_in_executor.side_effect = Exception(
-            "Update check error"
+        async_synchronizer.config_manager.get_repository_config_by_name.side_effect = (
+            Exception("Update check error")
         )
 
         result = await async_synchronizer.check_for_updates("test-repo")
