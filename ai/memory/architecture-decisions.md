@@ -4,6 +4,62 @@
 
 This document tracks key architectural decisions made for Ca-Bhfuil development.
 
+## Decision: SQLModel ORM Adoption
+**Date**: 2025-06-29  
+**Status**: Adopted  
+**Context**: Need to replace direct SQL queries with type-safe ORM for maintainability and AI integration
+
+### Problem
+Direct SQL queries in the existing database layer create several issues:
+- No compile-time type safety for database operations
+- Manual SQL string construction prone to errors
+- Difficult to maintain complex relationships
+- No built-in validation for data models
+- Hard to evolve schema as requirements change
+- Limited integration with Pydantic models used elsewhere
+
+### Alternatives Considered
+1. **Keep Direct SQL**: Continue with existing `sqlite3` approach
+   - Pros: Simple, lightweight, full control
+   - Cons: No type safety, manual query construction, maintenance burden
+2. **Pure SQLAlchemy**: Use SQLAlchemy Core/ORM without SQLModel
+   - Pros: Mature, powerful, flexible
+   - Cons: Separate Pydantic models needed, more boilerplate
+3. **SQLModel (Selected)**: FastAPI creator's unified Pydantic + SQLAlchemy solution
+   - Pros: Type safety, unified models, async support, Pydantic integration
+   - Cons: Newer library, some mypy quirks
+
+### Rationale
+SQLModel was chosen because it provides:
+- **Type Safety**: Full mypy compatibility with proper type hints
+- **Unified Models**: Single model definition for database and API/validation
+- **Async Support**: Native async/await patterns with aiosqlite
+- **Pydantic Integration**: Seamless validation and serialization
+- **Future AI Readiness**: Knowledge graph and vector embedding models
+- **Repository Pattern**: Clean separation of concerns
+
+### Impact
+- **Performance**: Minimal impact, still uses SQLite with better connection management
+- **Development**: Significantly improved developer experience with type safety
+- **Users**: No user-facing changes, purely internal improvement
+- **Future**: Ready for AI features with knowledge graph and vector embeddings
+
+### Implementation Notes
+- Repository pattern implemented for clean database abstraction
+- Async SQLAlchemy engine with aiosqlite driver
+- Type ignores used for SQLModel column methods (like, desc) due to mypy limitations
+- JSON columns for flexible metadata storage in knowledge graph models
+- Database moved to state directory following XDG standards
+
+### Reversibility
+Medium difficulty - would require rewriting database layer but schema remains compatible
+
+### Remaining Work
+1. **Test Migration**: Update all tests to use new SQLModel infrastructure
+2. **Data Migration**: Create migration script for existing SQLite databases  
+3. **Integration**: Update all code that uses database to use new managers
+4. **Documentation**: Update contributor docs with new database patterns
+
 ### ADR-001: XDG Base Directory Specification Compliance
 **Date**: 2025-01-21  
 **Status**: Adopted  

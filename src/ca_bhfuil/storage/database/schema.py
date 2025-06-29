@@ -19,8 +19,8 @@ class DatabaseManager:
         Args:
             db_path: Optional database path override
         """
-        cache_dir = config.get_cache_dir()
-        self.db_path = db_path or (cache_dir / "ca-bhfuil.db")
+        state_dir = config.get_state_dir()
+        self.db_path = db_path or (state_dir / "ca-bhfuil.db")
 
         # Ensure database directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
