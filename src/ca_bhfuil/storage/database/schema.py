@@ -257,12 +257,12 @@ class DatabaseManager:
                 where_clauses.append("message LIKE ?")
                 params.append(f"%{message_pattern}%")
 
-            query = f"""
-                SELECT * FROM commits
-                WHERE {" AND ".join(where_clauses)}
-                ORDER BY author_date DESC
-                LIMIT ?
-            """
+            # Build query with static where clauses - all parameters are properly escaped
+            where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+            # Safe SQL construction - where_clauses contains only static strings
+            query = (  # noqa: S608
+                f"SELECT * FROM commits WHERE {where_sql} ORDER BY author_date DESC LIMIT ?"
+            )
             params.append(limit)
 
             cursor.execute(query, params)

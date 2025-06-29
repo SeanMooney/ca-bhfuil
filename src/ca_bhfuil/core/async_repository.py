@@ -1,12 +1,16 @@
 """Asynchronous repository management with pygit2 integration."""
 
 import asyncio
+import datetime
 import pathlib
 import time
 import typing
 
 from loguru import logger
 import pygit2
+
+from ca_bhfuil.core import async_config
+from ca_bhfuil.core import async_registry
 
 
 if typing.TYPE_CHECKING:
@@ -300,8 +304,6 @@ class AsyncRepositoryManager:
 
     def _commit_to_model(self, commit: pygit2.Commit) -> commit_models.CommitInfo:
         """Convert pygit2.Commit to CommitInfo model."""
-        import datetime
-
         return commit_models.CommitInfo(
             sha=str(commit.id),
             short_sha=str(commit.id)[:7],
@@ -340,8 +342,6 @@ class AsyncRepositoryManager:
         start_time = time.time()
 
         try:
-            from ca_bhfuil.core import async_registry
-
             registry = await async_registry.get_async_repository_registry()
 
             # Register the repository
@@ -391,9 +391,6 @@ class AsyncRepositoryManager:
         start_time = time.time()
 
         try:
-            from ca_bhfuil.core import async_config
-            from ca_bhfuil.core import async_registry
-
             # Get repository configuration
             config_manager = async_config.AsyncConfigManager()
             repo_config = await config_manager.get_repository_config_by_name(repo_name)
@@ -455,8 +452,6 @@ class AsyncRepositoryManager:
         start_time = time.time()
 
         try:
-            from ca_bhfuil.core import async_registry
-
             registry = await async_registry.get_async_repository_registry()
             state = await registry.get_repository_state(repo_name)
 

@@ -2,7 +2,7 @@
 
 import pathlib
 import tempfile
-import unittest
+from unittest import mock
 
 import pytest
 import yaml
@@ -184,7 +184,7 @@ class TestConfigManager:
             ],
         }
 
-        with open(config_manager.repositories_file, "w") as f:
+        with config_manager.repositories_file.open("w") as f:
             yaml.dump(test_config, f)
 
         # Load and validate
@@ -209,7 +209,7 @@ class TestConfigManager:
             ],
         }
 
-        with open(config_manager.repositories_file, "w") as f:
+        with config_manager.repositories_file.open("w") as f:
             yaml.dump(test_config, f)
 
         # Test retrieval by URL path
@@ -233,7 +233,7 @@ class TestConfigManager:
             ],
         }
 
-        with open(config_manager.repositories_file, "w") as f:
+        with config_manager.repositories_file.open("w") as f:
             yaml.dump(test_config, f)
 
         # Test retrieval by source URL
@@ -274,7 +274,7 @@ class TestConfigManager:
             ],
         }
 
-        with open(config_manager.repositories_file, "w") as f:
+        with config_manager.repositories_file.open("w") as f:
             yaml.dump(test_config, f)
 
         errors = config_manager.validate_configuration()
@@ -299,7 +299,7 @@ class TestConfigManager:
             },
         }
 
-        with open(config_manager.auth_file, "w") as f:
+        with config_manager.auth_file.open("w") as f:
             yaml.dump(auth_config, f)
 
         # Load and validate
@@ -323,7 +323,7 @@ class TestConfigManager:
             },
         }
 
-        with open(config_manager.auth_file, "w") as f:
+        with config_manager.auth_file.open("w") as f:
             yaml.dump(auth_config, f)
 
         # Test retrieval
@@ -349,19 +349,19 @@ class TestXDGDirectories:
         assert str(state_dir).endswith(".local/state/ca-bhfuil")
         assert str(cache_dir).endswith(".cache/ca-bhfuil")
 
-    @unittest.mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": "/custom/config"})
+    @mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": "/custom/config"})
     def test_custom_xdg_config(self):
         """Test custom XDG_CONFIG_HOME."""
         config_dir = config.get_config_dir()
         assert str(config_dir) == "/custom/config/ca-bhfuil"
 
-    @unittest.mock.patch.dict("os.environ", {"XDG_STATE_HOME": "/custom/state"})
+    @mock.patch.dict("os.environ", {"XDG_STATE_HOME": "/custom/state"})
     def test_custom_xdg_state(self):
         """Test custom XDG_STATE_HOME."""
         state_dir = config.get_state_dir()
         assert str(state_dir) == "/custom/state/ca-bhfuil"
 
-    @unittest.mock.patch.dict("os.environ", {"XDG_CACHE_HOME": "/custom/cache"})
+    @mock.patch.dict("os.environ", {"XDG_CACHE_HOME": "/custom/cache"})
     def test_custom_xdg_cache(self):
         """Test custom XDG_CACHE_HOME."""
         cache_dir = config.get_cache_dir()
@@ -411,7 +411,7 @@ class TestRealWorldConfiguration:
             ],
         }
 
-        with open(config_manager.repositories_file, "w") as f:
+        with config_manager.repositories_file.open("w") as f:
             yaml.dump(test_config, f)
 
         # Create auth configuration
@@ -425,7 +425,7 @@ class TestRealWorldConfiguration:
             },
         }
 
-        with open(config_manager.auth_file, "w") as f:
+        with config_manager.auth_file.open("w") as f:
             yaml.dump(auth_config, f)
 
         return config_manager

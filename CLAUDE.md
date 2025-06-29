@@ -2,7 +2,7 @@
 
 > **For Claude Code and other AI development assistants working on Ca-Bhfuil**
 >
-> **Version**: 3.0 | **Last Updated**: 2025-06-25 | **Compatibility**: Claude Code v1.x, Claude Sonnet 4+
+> **Version**: 3.1 | **Last Updated**: 2025-06-29 | **Compatibility**: Claude Code v1.x, Claude Sonnet 4+
 
 ## Project Status
 
@@ -132,16 +132,24 @@ docs/user/                      # User-facing documentation
 - **Module-only imports**: Never import functions/classes directly - only import modules
 - **Type hints required**: Use modern Python 3.10+ type syntax throughout
 - **Test coverage**: Write comprehensive tests for all new functionality
-- **Run quality checks**: `uv run ruff check`, `uv run mypy`, `uv run pytest` before committing
+- **Automated quality tools**: Use `uv run ruff check --fix`, `uv run ruff format`, `uv run mypy`, `uv run pytest` before committing
+- **Auto-fix enabled**: Ruff will automatically fix most style issues - let it run first
+
+### 🚨 CRITICAL: 100% Pass Rate Required
+- **All tests MUST pass**: `uv run pytest` must show 100% success rate (no failing tests)
+- **All pre-commit hooks MUST pass**: `uv run pre-commit run --all-files` must show all hooks passing
+- **Zero tolerance for failures**: Fix ALL issues before committing - no exceptions
+- **Blocking requirement**: Commits with test failures or pre-commit violations are NOT acceptable
 
 ### Quality Gates Checklist
 
 Before committing any code, AI assistants must verify:
 
 #### Code Quality ✅
-- [ ] **All tests passing**: `uv run pytest` returns success
+- [ ] **All tests passing**: `uv run pytest` returns 100% success (no failing tests)
+- [ ] **Pre-commit hooks passing**: `uv run pre-commit run --all-files` shows all hooks passing
 - [ ] **Type checking clean**: `uv run mypy` shows no errors
-- [ ] **Linting clean**: `uv run ruff check` shows no violations
+- [ ] **Auto-fixes applied**: `uv run ruff check --fix` has been run
 - [ ] **Formatting applied**: `uv run ruff format` has been run
 - [ ] **Import style correct**: Module-only imports used throughout
 - [ ] **Type hints present**: All public functions have type annotations
@@ -321,10 +329,32 @@ uv run ruff check && uv run mypy && uv run pytest
 # Install pre-commit hooks
 uv run pre-commit install
 
-# Quality checks
-uv run ruff check && uv run ruff format
+# Quality checks with auto-fix
+uv run ruff check --fix && uv run ruff format
 uv run mypy && uv run pytest
 ```
+
+### Automated Development Workflow
+```bash
+# Complete quality check and fix cycle (ALL MUST PASS)
+uv run ruff check --fix  # Auto-fix issues
+uv run ruff format       # Format code
+uv run mypy             # Type check - MUST show no errors
+uv run pytest          # Run tests - MUST show 100% pass rate
+
+# Verify pre-commit hooks pass (MANDATORY before committing)
+uv run pre-commit run --all-files  # ALL hooks MUST pass
+```
+
+### 🚨 Commit Requirements (NON-NEGOTIABLE)
+Before any commit, verify:
+```bash
+# These commands MUST return success (exit code 0)
+uv run pytest          # 100% test success required
+uv run pre-commit run --all-files  # All hooks must pass
+```
+
+**If ANY test fails or ANY pre-commit hook fails: FIX BEFORE COMMITTING**
 
 ### IDE Configuration
 **For complete VSCode settings and extensions, see `docs/contributor/DEVELOPMENT.md`**
@@ -367,6 +397,7 @@ All quality gates must pass:
 - **Type hints required**: Use modern Python 3.10+ syntax (`list[str]` not `List[str]`)
 - **Test first**: Write comprehensive tests for all new functionality
 - **Quality gates**: Run `uv run ruff check`, `uv run mypy`, `uv run pytest` before any commit
+- **🚨 MANDATORY**: 100% test pass rate and 100% pre-commit hook success required for ALL commits
 
 ### Documentation Maintenance
 - **Follow design guidance**: Always reference existing design documents in `docs/contributor/design/` for consistency

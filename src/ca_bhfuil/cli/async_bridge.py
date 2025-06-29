@@ -5,6 +5,7 @@ import functools
 import typing
 
 from rich import console
+from rich import progress
 
 
 rich_console = console.Console()
@@ -48,8 +49,6 @@ async def with_progress(
     """Run an async operation with optional progress display."""
     if not show_progress:
         return await operation
-
-    from rich import progress
 
     with progress.Progress(
         progress.SpinnerColumn(),

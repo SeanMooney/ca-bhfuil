@@ -38,9 +38,9 @@ class AsyncConfigManager:
 
             return config.GlobalConfig(**config_data)
         except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in {self.repositories_file}: {e}")
+            raise ValueError(f"Invalid YAML in {self.repositories_file}: {e}") from e
         except Exception as e:
-            raise ValueError(f"Error loading configuration: {e}")
+            raise ValueError(f"Error loading configuration: {e}") from e
 
     async def get_repository_config(
         self, url_path: str
@@ -189,7 +189,7 @@ class AsyncConfigManager:
 
             return auth_methods
         except Exception as e:
-            raise ValueError(f"Error loading auth configuration: {e}")
+            raise ValueError(f"Error loading auth configuration: {e}") from e
 
     async def get_auth_method(self, auth_key: str) -> config.AuthMethod | None:
         """Get authentication method by key."""

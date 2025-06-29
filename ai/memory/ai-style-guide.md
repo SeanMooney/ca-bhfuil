@@ -340,11 +340,36 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## Quick Checks Before Committing
 
-1. **Ruff clean**: `uv run ruff check src/ tests/`
+1. **Auto-fix first**: `uv run ruff check --fix src/ tests/` (fixes most issues automatically)
 2. **Format applied**: `uv run ruff format src/ tests/`
 3. **Types check**: `uv run mypy src/`
 4. **Tests pass**: `uv run pytest`
 5. **Documentation updated**: If public API changed
+
+## Automated Tools and What They Fix
+
+### Ruff Auto-Fixes (Use `--fix` flag)
+- **Import sorting**: Automatically organizes imports by stdlib → third-party → local
+- **Import grouping**: Adds proper spacing between import groups
+- **Unused imports**: Removes imports that aren't used
+- **F-string conversion**: Converts `.format()` and `%` formatting to f-strings
+- **Type annotation updates**: Converts `List[str]` to `list[str]`, `Optional[T]` to `T | None`
+- **Pathlib enforcement**: Suggests `pathlib.Path` over `os.path` operations
+- **Comprehension optimization**: Converts loops to list/dict comprehensions where appropriate
+- **Performance improvements**: Identifies and fixes common performance anti-patterns
+
+### What AI Assistants Should Let Ruff Handle
+- **Don't manually sort imports**: Run `ruff check --fix` instead
+- **Don't manually convert to f-strings**: Ruff will do this automatically
+- **Don't manually fix line lengths**: Ruff format handles this
+- **Don't manually update type annotations**: Ruff converts legacy typing automatically
+
+### What Still Requires Manual Attention
+- **Function complexity**: Break down large functions
+- **Error handling patterns**: Choose appropriate exception types
+- **Documentation quality**: Write meaningful docstrings
+- **Test coverage**: Ensure comprehensive testing
+- **Security considerations**: Review sensitive operations
 
 ## Priority Order
 
@@ -374,4 +399,4 @@ When making code changes:
 
 **Key Principle**: Write code that is easy for both humans and AI to understand and maintain.
 
-**Last Updated**: 2025-01-23 - Enhanced with function design patterns, resource management, sync process, and explicit "from package import module" preference
+**Last Updated**: 2025-06-29 - Enhanced with automation guidance, ruff auto-fix patterns, and AI assistant workflow optimizations

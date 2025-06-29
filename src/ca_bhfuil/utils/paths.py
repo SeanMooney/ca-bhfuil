@@ -1,5 +1,6 @@
 """URL-to-path conversion utilities with cross-platform safety."""
 
+import hashlib
 import pathlib
 import re
 from urllib import parse
@@ -119,8 +120,6 @@ def ensure_path_length(path: pathlib.Path, max_length: int = 260) -> pathlib.Pat
 
     # If still too long, use hash-based truncation
     if len(str(truncated_path)) > max_length:
-        import hashlib
-
         path_hash = hashlib.sha256(path_str.encode()).hexdigest()[:8]
         # Keep the last component and add hash
         last_part = parts[-1] if parts else "repo"

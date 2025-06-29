@@ -1,3 +1,4 @@
+import functools
 import os
 import pathlib
 import shutil
@@ -40,7 +41,7 @@ class AsyncCloneLockManager:
     ) -> None:
         """Release lock."""
         if await self._is_locked():
-            os.remove(self.lock_file)
+            self.lock_file.unlink()
             logger.debug(f"Released clone lock for {self.repo_path}")
 
     async def _is_locked(self) -> bool:
@@ -118,8 +119,6 @@ class AsyncRepositoryCloner:
         callbacks = await self._setup_callbacks(repo_config, progress_callback)
 
         # Use functools.partial to handle keyword arguments
-        import functools
-
         clone_func = functools.partial(
             pygit2.clone_repository, url, str(repo_path), callbacks=callbacks
         )
@@ -141,10 +140,8 @@ class AsyncRepositoryCloner:
 
         if progress_callback:
             # Use setattr to work around mypy method assignment restrictions
-            setattr(
-                callbacks,
-                "transfer_progress",
-                self._create_progress_callback(progress_callback),
+            callbacks.transfer_progress = self._create_progress_callback(  # type: ignore[method-assign]
+                progress_callback
             )
 
         if repo_config.auth_key:
@@ -153,17 +150,13 @@ class AsyncRepositoryCloner:
             )
             if auth_method:
                 # Use setattr to work around mypy method assignment restrictions
-                setattr(
-                    callbacks,
-                    "credentials",
-                    self._create_credentials_callback(auth_method),
-                )
+                callbacks.credentials = self._create_credentials_callback(auth_method)  # type: ignore[method-assign,assignment]
             else:
                 # Use setattr to work around mypy method assignment restrictions
-                setattr(callbacks, "credentials", None)
+                callbacks.credentials = None  # type: ignore[method-assign,assignment]
         else:
             # Use setattr to work around mypy method assignment restrictions
-            setattr(callbacks, "credentials", None)
+            callbacks.credentials = None  # type: ignore[method-assign,assignment]
 
         return callbacks
 

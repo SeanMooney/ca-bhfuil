@@ -427,10 +427,11 @@ class TestCompletionEdgeCases:
         completion_file = completion_dir / "ca-bhfuil"
         completion_file.write_text("existing")
 
-        # Mock open to raise permission error
+        # Mock Path.write_text to raise permission error
         with (
             mock.patch(
-                "builtins.open", side_effect=PermissionError("Permission denied")
+                "pathlib.Path.write_text",
+                side_effect=PermissionError("Permission denied"),
             ),
             pytest.raises(PermissionError),
         ):
