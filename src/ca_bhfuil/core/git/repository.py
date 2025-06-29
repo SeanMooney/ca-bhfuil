@@ -1,5 +1,6 @@
 """Repository wrapper class for pygit2 operations."""
 
+import datetime
 import pathlib
 import typing
 
@@ -289,8 +290,6 @@ class Repository:
         Returns:
             CommitInfo model.
         """
-        import datetime
-
         return commit_models.CommitInfo(
             sha=str(commit.id),
             short_sha=str(commit.id)[:7],

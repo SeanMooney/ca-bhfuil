@@ -113,20 +113,24 @@ select = [
     "W",   # pycodestyle warnings
     "F",   # pyflakes
     "I",   # isort
-    #"B",   # flake8-bugbear
+    "B",   # flake8-bugbear (enable for better bug detection)
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
     "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
     "N",   # pep8-naming
     "D",   # pydocstyle
-    # "S",   # flake8-bandit (security)
-    # "PTH", # flake8-use-pathlib
+    "S",   # flake8-bandit (security) - enable with targeted ignores
+    "PTH", # flake8-use-pathlib (enforce pathlib usage)
     "RET", # flake8-return
     "TCH", # flake8-type-checking
     "PIE", # flake8-pie
     "T20", # flake8-print
     "LOG", # flake8-logging
+    "PL",  # pylint rules (subset)
+    "FLY", # flynt (f-string conversion)
+    "PERF", # performance anti-patterns
+    "FURB", # refurb modernization
 ]
 ignore = [
     "E501",  # line too long, handled by formatter
@@ -136,14 +140,24 @@ ignore = [
     "D104",  # missing docstring in public package
     "D107",  # missing docstring in __init__
     "S101",  # use of assert detected (ok in tests)
+    "S311",  # random not for crypto (we use it for jitter)
+    "S603",  # subprocess call - check for execution of untrusted input
+    "S607",  # starting process with partial executable path
     "T201",  # print found (we use logging)
     "N806",  # variable in function should be lowercase (for pydantic models)
+    "PLR0913", # too many arguments to function call
+    "PLR0915", # too many statements
+    "PLR2004", # magic value used in comparison
+    "PLW0603", # global statement - acceptable for singleton pattern
+    "PERF203", # try-except in loop - sometimes necessary
+    "PERF401", # list extend - not always clearer
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*" = ["ARG", "S101", "D", "T201", "PLR2004"]
-"scripts/**/*" = ["T201", "S602", "S607"]
-"src/ca_bhfuil/cli/**/*" = ["T201"]  # CLI can use print
+"tests/**/*" = ["ARG", "S101", "S102", "S105", "S106", "S108", "D", "T201", "PLR2004", "PLR0913", "PLR0915", "PLC0415"]
+"scripts/**/*" = ["T201", "S602", "S607", "PLR2004"]
+"src/ca_bhfuil/cli/**/*" = ["T201", "PLR0912"]  # CLI can use print and have complex command functions
+"src/ca_bhfuil/storage/database/schema.py" = ["S608"]  # Safe parameterized queries with static where clauses
 
 [tool.ruff.lint.isort]
 known-first-party = ["ca_bhfuil"]

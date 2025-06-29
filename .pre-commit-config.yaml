@@ -44,7 +44,7 @@ repos:
       # Run the linter with auto-fix where possible
       - id: ruff
         types_or: [python, pyi, jupyter]
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix, --exit-non-zero-on-fix, --show-fixes]
 
   # Type checking (strict mode, no auto-fix)
   - repo: https://github.com/pre-commit/mirrors-mypy

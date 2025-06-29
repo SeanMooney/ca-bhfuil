@@ -11,6 +11,7 @@ from ca_bhfuil.core import async_registry
 from ca_bhfuil.core import config
 from ca_bhfuil.core import sync
 from ca_bhfuil.core.git import async_git
+from ca_bhfuil.core.git import repository as repository_module
 from ca_bhfuil.core.models import results as results_models
 
 
@@ -124,8 +125,6 @@ class AsyncRepositorySynchronizer:
         """
         try:
             # Get updated repository statistics
-            from ca_bhfuil.core.git import repository as repository_module
-
             repo_wrapper = await self.git_manager.run_in_executor(
                 repository_module.Repository, repo_config.repo_path
             )

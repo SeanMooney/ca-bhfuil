@@ -1,5 +1,6 @@
 """Tests for __main__.py entry point."""
 
+import pathlib
 from unittest import mock
 
 import pytest
@@ -29,7 +30,7 @@ class TestMainEntryPoint:
         # Mock the condition check
         with (
             mock.patch.object(__main__, "__name__", "__main__"),
-            open(__main__.__file__) as f,
+            pathlib.Path(__main__.__file__).open() as f,
         ):
             # Re-import or re-execute the module logic
             exec(compile(f.read(), __main__.__file__, "exec"))
@@ -184,7 +185,7 @@ class TestPythonModuleExecution:
         assert hasattr(ca_bhfuil.__main__, "main")
 
         # The file should have the if __name__ == "__main__" check
-        with open(ca_bhfuil.__main__.__file__) as f:
+        with pathlib.Path(ca_bhfuil.__main__.__file__).open() as f:
             content = f.read()
             assert 'if __name__ == "__main__"' in content
             assert "main()" in content

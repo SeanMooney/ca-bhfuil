@@ -36,15 +36,14 @@ def analyze_imports(file_path: pathlib.Path) -> dict[str, list[str]]:
                         imports["violations"].append(
                             f"from {node.module} import {alias.name}"
                         )
+                    elif node.module.startswith("ca_bhfuil"):
+                        imports["local"].append(
+                            f"from {node.module} import {alias.name}"
+                        )
                     else:
-                        if node.module.startswith("ca_bhfuil"):
-                            imports["local"].append(
-                                f"from {node.module} import {alias.name}"
-                            )
-                        else:
-                            imports["third_party"].append(
-                                f"from {node.module} import {alias.name}"
-                            )
+                        imports["third_party"].append(
+                            f"from {node.module} import {alias.name}"
+                        )
 
         return imports
     except Exception as e:

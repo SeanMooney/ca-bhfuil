@@ -1,7 +1,9 @@
 """Main CLI application for ca-bhfuil."""
 
+import contextlib
 import json
 import pathlib
+import traceback
 
 import aiofiles
 from rich import console
@@ -84,7 +86,7 @@ async def config_init(
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error initializing configuration: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @config_app.command("validate")
@@ -112,7 +114,7 @@ async def config_validate() -> None:
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error validating configuration: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @config_app.command("status")
@@ -196,7 +198,7 @@ async def config_status() -> None:
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error showing configuration status: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @config_app.command("show")
@@ -273,7 +275,7 @@ async def config_show(
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error displaying configuration: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -285,7 +287,7 @@ def install_completion(
         completion.install_completion(shell)
     except Exception as e:
         rich_console.print(f"[red]❌ Error installing completion: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -419,13 +421,9 @@ async def search(
     except Exception as e:
         rich_console.print(f"[red]❌ Search error: {e}[/red]")
         if verbose:
-            import traceback
-
             rich_console.print(f"[red]{traceback.format_exc()}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
-        import contextlib
-
         with contextlib.suppress(Exception):
             repo_manager.shutdown()
 
@@ -634,7 +632,7 @@ async def repo_add(
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error adding repository: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @repo_app.command("list")
@@ -672,7 +670,7 @@ async def repo_list() -> None:
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error listing repositories: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 def version_callback(value: bool) -> None:

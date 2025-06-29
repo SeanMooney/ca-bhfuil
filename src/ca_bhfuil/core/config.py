@@ -2,10 +2,13 @@
 
 import os
 import pathlib
+import re
 import typing  # Any
 
 import pydantic  # BaseModel, Field, field_validator
 import yaml
+
+from ..utils import paths
 
 
 # XDG Base Directory utilities
@@ -81,14 +84,12 @@ class BranchConfig(pydantic.BaseModel):
     @classmethod
     def validate_patterns(cls, v: list[str]) -> list[str]:
         """Validate glob patterns."""
-        import re
-
         for pattern in v:
             try:
                 # Convert glob to regex for validation
                 re.compile(pattern.replace("*", ".*"))
-            except re.error:
-                raise ValueError(f"Invalid pattern: {pattern}")
+            except re.error as e:
+                raise ValueError(f"Invalid pattern: {pattern}") from e
         return v
 
 
@@ -123,9 +124,7 @@ class RepositoryConfig(pydantic.BaseModel):
     @property
     def url_path(self) -> str:
         """Generate URL-based path from source URL."""
-        from ..utils.paths import url_to_path
-
-        return url_to_path(self.source["url"])
+        return paths.url_to_path(self.source["url"])
 
     @property
     def repo_path(self) -> pathlib.Path:
@@ -165,14 +164,14 @@ class ConfigManager:
             return GlobalConfig()
 
         try:
-            with open(self.repositories_file) as f:
+            with self.repositories_file.open(encoding="utf-8") as f:
                 config_data = yaml.safe_load(f) or {}
 
             return GlobalConfig(**config_data)
         except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in {self.repositories_file}: {e}")
+            raise ValueError(f"Invalid YAML in {self.repositories_file}: {e}") from e
         except Exception as e:
-            raise ValueError(f"Error loading configuration: {e}")
+            raise ValueError(f"Error loading configuration: {e}") from e
 
     def get_repository_config(self, url_path: str) -> RepositoryConfig | None:
         """Get configuration for specific repository by URL path."""
@@ -243,7 +242,7 @@ class ConfigManager:
         }
 
         if not self.repositories_file.exists():
-            with open(self.repositories_file, "w") as f:
+            with self.repositories_file.open("w", encoding="utf-8") as f:
                 yaml.dump(default_config, f, default_flow_style=False, indent=2)
 
         # Create default global-settings.yaml
@@ -266,7 +265,7 @@ class ConfigManager:
         }
 
         if not self.global_settings_file.exists():
-            with open(self.global_settings_file, "w") as f:
+            with self.global_settings_file.open("w", encoding="utf-8") as f:
                 yaml.dump(default_global, f, default_flow_style=False, indent=2)
 
         # Create auth.yaml template (with restrictive permissions)
@@ -285,7 +284,7 @@ class ConfigManager:
         }
 
         if not self.auth_file.exists():
-            with open(self.auth_file, "w") as f:
+            with self.auth_file.open("w", encoding="utf-8") as f:
                 yaml.dump(auth_template, f, default_flow_style=False, indent=2)
             self.auth_file.chmod(0o600)  # Secure permissions
 
@@ -295,7 +294,7 @@ class ConfigManager:
             return {}
 
         try:
-            with open(self.auth_file) as f:
+            with self.auth_file.open(encoding="utf-8") as f:
                 auth_data = yaml.safe_load(f) or {}
 
             auth_methods = {}
@@ -304,7 +303,7 @@ class ConfigManager:
 
             return auth_methods
         except Exception as e:
-            raise ValueError(f"Error loading auth configuration: {e}")
+            raise ValueError(f"Error loading auth configuration: {e}") from e
 
     def get_auth_method(self, auth_key: str) -> AuthMethod | None:
         """Get authentication method by key."""

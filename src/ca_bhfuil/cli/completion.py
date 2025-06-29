@@ -4,6 +4,8 @@ import pathlib
 
 import typer
 
+from ca_bhfuil.core import config
+
 
 def complete_format(incomplete: str) -> list[str]:
     """Complete format options."""
@@ -44,8 +46,6 @@ def complete_repo_path(incomplete: str) -> list[str]:
 def complete_repository_name(incomplete: str) -> list[str]:
     """Complete configured repository names."""
     try:
-        from ca_bhfuil.core import config
-
         config_manager = config.ConfigManager()
         global_config = config_manager.load_configuration()
 
@@ -66,8 +66,7 @@ def install_completion(shell: str = "bash") -> None:
         completion_file.parent.mkdir(exist_ok=True)
 
         # Write completion script
-        with open(completion_file, "w") as f:
-            f.write(completion_script)
+        completion_file.write_text(completion_script, encoding="utf-8")
 
         typer.echo(f"Bash completion installed to {completion_file}")
         typer.echo("Source your .bashrc or start a new shell to enable completion")
@@ -239,8 +238,7 @@ def generate_completion_scripts() -> None:
 
     # Generate bash completion
     bash_script = scripts_dir / "ca-bhfuil-completion.bash"
-    with open(bash_script, "w") as f:
-        f.write(_generate_bash_completion())
+    bash_script.write_text(_generate_bash_completion(), encoding="utf-8")
 
     typer.echo(f"Generated bash completion script: {bash_script}")
 

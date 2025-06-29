@@ -4,9 +4,7 @@ import asyncio
 import typing
 import uuid
 
-
-if typing.TYPE_CHECKING:
-    from ca_bhfuil.core.models import progress
+from ca_bhfuil.core.models import progress
 
 
 class AsyncTaskManager:
@@ -21,8 +19,6 @@ class AsyncTaskManager:
         self, coro: typing.Coroutine[typing.Any, typing.Any, typing.Any]
     ) -> str:
         """Create and track a new background task."""
-        from ca_bhfuil.core.models import progress
-
         task_id = str(uuid.uuid4())
         task = asyncio.create_task(self._run_task(task_id, coro))
         self._tasks[task_id] = task
@@ -33,8 +29,6 @@ class AsyncTaskManager:
         self, task_id: str, coro: typing.Coroutine[typing.Any, typing.Any, typing.Any]
     ) -> None:
         """Run a task and store its result."""
-        from ca_bhfuil.core.models import progress
-
         try:
             result = await coro
             self._results[task_id] = result
@@ -43,10 +37,8 @@ class AsyncTaskManager:
             self._results[task_id] = e
             self._status[task_id] = progress.TaskStatus.FAILED
 
-    def get_status(self, task_id: str) -> "progress.TaskStatus":
+    def get_status(self, task_id: str) -> progress.TaskStatus:
         """Get the status of a task."""
-        from ca_bhfuil.core.models import progress
-
         return self._status.get(task_id, progress.TaskStatus.PENDING)
 
     def get_result(self, task_id: str) -> typing.Any:
