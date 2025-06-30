@@ -1,8 +1,10 @@
 """Main CLI application for ca-bhfuil."""
 
+import asyncio
 import contextlib
 import json
 import pathlib
+import subprocess
 import traceback
 
 import aiofiles
@@ -48,7 +50,51 @@ repo_app = typer.Typer(
 )
 app.add_typer(repo_app, name="repo")
 
+# Create db subcommand group
+db_app = typer.Typer(
+    name="db",
+    help="Database migration commands",
+    no_args_is_help=True,
+)
+app.add_typer(db_app, name="db")
+
 rich_console = console.Console()
+
+
+@db_app.command("upgrade")
+@async_command
+async def db_upgrade() -> None:
+    """Apply pending database migrations."""
+    try:
+        rich_console.print("[bold blue]Applying database migrations...[/bold blue]")
+
+        async def _run_alembic_upgrade() -> tuple[int | None, bytes, bytes]:
+            process = await asyncio.create_subprocess_shell(
+                "uv run alembic upgrade head",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            return process.returncode, stdout, stderr
+
+        returncode, stdout, stderr = await with_progress(
+            _run_alembic_upgrade(),
+            "Running Alembic upgrade...",
+        )
+
+        if returncode == 0:
+            rich_console.print(
+                "[green]✅ Database migration applied successfully![/green]"
+            )
+        else:
+            rich_console.print(
+                f"[red]❌ Database migration failed: {stderr.decode().strip()}[/red]"
+            )
+            raise typer.Exit(1)
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error during database migration: {e}[/red]")
+        raise typer.Exit(1) from e
 
 
 @config_app.command("init")

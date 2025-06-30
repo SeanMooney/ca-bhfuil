@@ -222,7 +222,21 @@ class SQLModelDatabaseManager:
 
 ### Schema Versioning
 
-Schema migrations are no longer managed with raw SQL. SQLAlchemy's metadata and tools like Alembic (if integrated in the future) will handle schema evolution. For now, the `create_all` method ensures the schema matches the models on startup, which is suitable for the current pre-release stage.
+Schema migrations are managed using [Alembic](https://alembic.sqlalchemy.org/). Alembic compares the current SQLModel definitions with the database schema and generates migration scripts to apply changes in a controlled, versioned manner. This ensures that schema evolution is handled robustly without data loss.
+
+For development, you can generate new migrations using:
+
+```bash
+uv run alembic revision --autogenerate -m "Your descriptive message"
+```
+
+To apply pending migrations, use the CLI command:
+
+```bash
+uv run ca-bhfuil db upgrade
+```
+
+**Note**: Downgrades are not supported in this project, so `downgrade()` functions in migration scripts should remain empty (`pass`).
 
 ## Caching Strategy
 

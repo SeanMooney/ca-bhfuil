@@ -561,6 +561,46 @@ The async infrastructure is designed to work alongside existing synchronous code
 
 For more detailed information, see the [Concurrency Architecture](../design/concurrency.md) documentation.
 
+## Database Migrations (Alembic)
+
+Ca-Bhfuil uses [Alembic](https://alembic.sqlalchemy.org/) for managing database schema migrations. This ensures that changes to the SQLModel definitions can be applied to the database in a controlled and versioned manner.
+
+### Generating Migrations
+
+When you make changes to the SQLModel definitions (e.g., add a new table, add a column, change a column type), you need to generate a new migration script:
+
+```bash
+uv run alembic revision --autogenerate -m "Descriptive message about your changes"
+```
+
+This command will:
+1. Compare your current SQLModel definitions (`src/ca_bhfuil/storage/database/models.py`) with the current state of the database.
+2. Generate a new Python file in the `alembic/versions/` directory containing the `upgrade()` and `downgrade()` functions. The `upgrade()` function will contain the necessary `op` commands to apply your schema changes.
+
+**Important Notes:**
+- Review the generated migration script carefully before applying it. Alembic's autogeneration is powerful but may not always capture complex changes perfectly.
+- As downgrades are not supported in this project, the `downgrade()` function in generated scripts should remain empty (`pass`).
+
+### Applying Migrations
+
+To apply pending migrations to your database, use the `db upgrade` CLI command:
+
+```bash
+uv run ca-bhfuil db upgrade
+```
+
+This command will:
+1. Run all pending migration scripts in chronological order.
+2. Update your database schema to the latest version.
+
+### Initializing the Database (First Run)
+
+For a fresh database, simply run the `db upgrade` command. The initial migration script will create all necessary tables.
+
+```bash
+uv run ca-bhfuil db upgrade
+```
+
 ## Container Development
 
 The project includes Docker containers for both production and development use.

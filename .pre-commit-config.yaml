@@ -61,7 +61,7 @@ repos:
           - pygit2
           - types-aiofiles
         args: [--strict, --show-error-codes, --no-error-summary]
-        exclude: ^(tests/|scripts/)
+        exclude: ^(tests/|scripts/|alembic/)
 
   # Bash script linting
   - repo: https://github.com/openstack/bashate

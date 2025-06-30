@@ -10,6 +10,7 @@ from ca_bhfuil.storage import sqlmodel_manager
 from ca_bhfuil.storage.database import engine
 from ca_bhfuil.storage.database import models
 from ca_bhfuil.storage.database import repository
+from ca_bhfuil.testing import alembic_utils
 
 
 @pytest.mark.asyncio
@@ -30,8 +31,8 @@ class TestSQLModelEngine:
         assert db_engine.db_path == temp_db_path
         assert "sqlite+aiosqlite" in db_engine.database_url
 
-        # Test table creation
-        await db_engine.create_tables()
+        # Test schema creation with alembic
+        await alembic_utils.create_test_database(temp_db_path)
 
         # Test session creation
         async with db_engine.get_session() as session:
@@ -42,7 +43,7 @@ class TestSQLModelEngine:
     async def test_session_context_manager(self, temp_db_path):
         """Test async session context manager."""
         db_engine = engine.DatabaseEngine(temp_db_path)
-        await db_engine.create_tables()
+        await alembic_utils.create_test_database(temp_db_path)
 
         async with db_engine.get_session() as session:
             # Test we can execute queries
@@ -64,8 +65,10 @@ class TestSQLModelRepository:
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             temp_path = pathlib.Path(tmp.name)
 
+        # Create database schema with alembic
+        await alembic_utils.create_test_database(temp_path)
+
         db_engine = engine.DatabaseEngine(temp_path)
-        await db_engine.create_tables()
 
         async with db_engine.get_session() as session:
             yield session

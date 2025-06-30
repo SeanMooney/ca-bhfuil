@@ -53,6 +53,7 @@ dependencies = [
     "aiofiles>=23.0.0",
     "aiosqlite>=0.19.0",
     "watchfiles>=0.21.0",
+    "alembic>=1.13.0",
 ]
 
 [project.optional-dependencies]
@@ -185,6 +186,9 @@ docstring-code-line-length = "dynamic"
 [tool.mypy]
 python_version = "3.10"
 packages = ["ca_bhfuil"]
+exclude = [
+    "alembic/",
+]
 strict = true
 warn_unreachable = true
 warn_unused_ignores = true
@@ -201,6 +205,7 @@ module = [
     "loguru.*",
     "sqlmodel.*",
     "sqlalchemy.*",
+    "alembic.*",
 ]
 ignore_missing_imports = true
 disallow_untyped_calls = false

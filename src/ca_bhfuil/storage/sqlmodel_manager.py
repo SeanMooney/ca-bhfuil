@@ -8,6 +8,7 @@ from loguru import logger
 from ca_bhfuil.storage.database import engine
 from ca_bhfuil.storage.database import models
 from ca_bhfuil.storage.database import repository
+from ca_bhfuil.testing import alembic_utils
 
 
 class SQLModelDatabaseManager:
@@ -25,9 +26,16 @@ class SQLModelDatabaseManager:
         )
 
     async def initialize(self) -> None:
-        """Initialize the database tables."""
-        await self.engine.create_tables()
-        logger.info("Database tables initialized")
+        """Initialize the database tables using alembic migrations."""
+        # Run alembic upgrade to create/update schema
+        return_code, _stdout, stderr = await alembic_utils.run_alembic_command(
+            "upgrade head", self.engine.db_path
+        )
+
+        if return_code != 0:
+            raise RuntimeError(f"Failed to initialize database with alembic: {stderr}")
+
+        logger.info("Database schema initialized with alembic migrations")
 
     async def close(self) -> None:
         """Close database connections."""
