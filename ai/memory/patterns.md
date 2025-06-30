@@ -149,6 +149,47 @@
 - Provide clear validation error messages
 - Support both YAML and environment variable configuration
 
+## Database Schema Evolution Patterns
+
+### Model-Documentation Synchronization
+**Critical Requirement**: When `src/ca_bhfuil/storage/database/models.py` changes, documentation must be updated automatically.
+
+**Workflow Pattern**:
+1. **Model Changes**: Any modification to SQLModel classes
+2. **Design Doc Update**: Automatically update `docs/contributor/design/data-storage-design.md`
+3. **Migration Generation**: Create new Alembic migration if schema changes
+4. **AI Memory Update**: Document the changes in architecture decisions
+
+**Implementation Requirements**:
+- AI assistants MUST check for model changes at start of session
+- AI assistants MUST update design documentation when models change
+- AI assistants MUST generate migrations for schema changes
+- All changes MUST follow the AI style guide import patterns
+
+**Key Files to Monitor**:
+- `src/ca_bhfuil/storage/database/models.py` - Source of truth for data models
+- `docs/contributor/design/data-storage-design.md` - Architecture documentation
+- `alembic/versions/` - Database migrations
+- `ai/memory/architecture-decisions.md` - Decision history
+
+**Automation Triggers**:
+- When starting a development session, check git diff for model changes
+- When making model changes, immediately update documentation
+- When schema changes, generate migration with descriptive name
+- Document rationale for model changes in architecture decisions
+
+### Alembic Migration Patterns
+**Style Guide Compliance**:
+- Use `from collections import abc` not `from typing import Sequence`
+- Use modern union syntax: `str | None` not `Optional[str]`
+- Follow module-only import pattern: `import sqlalchemy as sa`
+- Include descriptive migration names and docstrings
+
+**Migration Naming Convention**:
+- Format: `YYYY_MM_DD_descriptive_change_name`
+- Examples: `2025_06_30_add_commit_branch_relationship`
+- Include rationale in migration docstring
+
 ---
 
 **Remember**: Patterns should be living documents. Update this file when you discover new effective patterns or identify anti-patterns to avoid.
