@@ -149,10 +149,10 @@ graph TB
 - Cache invalidation on repository changes
 
 **SQLModel ORM**
-- Type-safe, async database access via SQLModel and SQLAlchemy.
-- Manages the SQLite database schema and all structured data.
-- Provides a repository pattern for clean data access.
-- Handles all transaction management and data integrity.
+- Type-safe, async database access via SQLModel and SQLAlchemy
+- Manages the single SQLite database (`ca-bhfuil.db`) schema through Alembic migrations
+- Provides a repository pattern for clean data access
+- Handles all transaction management and data integrity
 
 **File Storage**
 - Configuration file management
@@ -203,7 +203,8 @@ sequenceDiagram
         Git->>Git: pygit2 operations
         Git-->>Search: commit_list
         Search->>DBManager: store_analysis(results)
-        DBManager->>DBManager: Use repository pattern to save data
+        DBManager->>DBManager: Use repository pattern with SQLModel ORM
+        DBManager->>DBManager: Schema managed by Alembic migrations
         Search->>Cache: store_cache(query, results)
     end
     Search-->>CLI: formatted_results
@@ -236,7 +237,8 @@ sequenceDiagram
 ## Key Architectural Decisions
 
 ### Storage Strategy
-- **SQLModel ORM for structured data**: Analysis results, cache metadata, configuration
+- **Single SQLite database for all structured data**: Analysis results, repository metadata, configuration, and embeddings in `ca-bhfuil.db`
+- **Alembic-managed schema**: Database schema versioning and migration management
 - **File-based for unstructured**: Logs, exports, temporary data
 - **In-memory for session**: Current search context, UI state
 - **External for repositories**: Git repositories managed separately
