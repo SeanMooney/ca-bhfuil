@@ -36,18 +36,13 @@ Following freedesktop.org standards for Linux compatibility:
 
 # Persistent State (Important to preserve)
 ~/.local/state/ca-bhfuil/
+├── ca-bhfuil.db                     # SQLite: all application data (repositories, commits, branches, etc.)
 ├── github.com/torvalds/linux/      # Per-repository state
-│   ├── analysis.db                  # SQLite: commit analysis results
-│   ├── sync-log.db                  # SQLite: sync history and metadata
-│   ├── embeddings.db                # SQLite: AI embeddings and vectors
 │   ├── repo-config.yaml             # Repository-specific overrides
 │   ├── stats.json                   # Quick access statistics
 │   └── .locks/                      # Process coordination
 │       ├── sync.lock
 │       └── analysis.lock
-├── global/
-│   ├── repo-registry.db             # SQLite: global repository metadata
-│   └── sync-scheduler.db            # SQLite: sync job management
 └── logs/
     ├── ca-bhfuil.log               # Application logs
     └── archive/                     # Rotated log files
@@ -65,11 +60,19 @@ Following freedesktop.org standards for Linux compatibility:
 
 ## SQLModel Database Design
 
-The project has migrated from raw SQL to **SQLModel**, a modern, type-safe ORM that combines Pydantic and SQLAlchemy. This provides a single, unified data model for database schema, validation, and serialization, significantly improving maintainability and type safety.
+The project uses **SQLModel**, a modern, type-safe ORM that combines Pydantic and SQLAlchemy. All application data is stored in a single SQLite database file (`ca-bhfuil.db`) located in the XDG state directory (`~/.local/state/ca-bhfuil/`). This provides a unified data model for database schema, validation, and serialization, significantly improving maintainability and type safety.
+
+### Single Database Architecture
+
+All data is consolidated into a single SQLite database file:
+- **Location**: `~/.local/state/ca-bhfuil/ca-bhfuil.db`
+- **Contains**: Repositories, commits, branches, knowledge graph nodes, embeddings, and all application metadata
+- **Benefits**: Simplified backup, atomic transactions across entities, easier maintenance
+- **Schema Management**: Managed exclusively through Alembic migrations
 
 ### Schema Architecture
 
-The database schema is now defined using SQLModel classes, which serve as the single source of truth for data structures.
+The database schema is defined using SQLModel classes, which serve as the single source of truth for data structures.
 
 #### Core Data Models (`models.py`)
 
@@ -142,6 +145,8 @@ class KGNode(sqlmodel.SQLModel, table=True):
 
 Database connections and sessions are managed through a central `DatabaseEngine` class that handles the async SQLAlchemy engine. A `SQLModelDatabaseManager` provides a high-level API for all database operations, using the repository pattern to abstract data access logic.
 
+**Important**: Schema creation and modification is handled exclusively through Alembic migrations. The `DatabaseEngine` does not provide schema management functions.
+
 #### Database Engine (`engine.py`)
 
 ```python
@@ -152,15 +157,15 @@ import sqlmodel
 class DatabaseEngine:
     """Manages SQLAlchemy engine and session creation for SQLModel."""
 
-    def __init__(self, db_path: pathlib.Path):
+    def __init__(self, db_path: pathlib.Path | None = None):
+        # Default to XDG state directory if no path provided
+        if db_path is None:
+            state_dir = get_state_dir()
+            db_path = state_dir / "ca-bhfuil.db"
+
+        self.db_path = db_path
         self.database_url = f"sqlite+aiosqlite:///{db_path}"
         self._engine = sqlalchemy.ext.asyncio.create_async_engine(self.database_url)
-
-    async def create_tables(self) -> None:
-        """Create all database tables."""
-        # Use sync engine for table creation
-        sync_engine = sqlalchemy.create_engine(f"sqlite:///{self.db_path}")
-        sqlmodel.SQLModel.metadata.create_all(sync_engine)
 
     @contextlib.asynccontextmanager
     async def get_session(self) -> typing.AsyncIterator[sqlalchemy.ext.asyncio.AsyncSession]:
@@ -207,6 +212,14 @@ class SQLModelDatabaseManager:
 
     def __init__(self, db_path: pathlib.Path | None = None):
         self.engine = engine.get_database_engine(db_path)
+
+    async def initialize(self) -> None:
+        """Initialize the database tables using alembic migrations."""
+        return_code, _stdout, stderr = await alembic_utils.run_alembic_command(
+            "upgrade head", self.engine.db_path
+        )
+        if return_code != 0:
+            raise RuntimeError(f"Failed to initialize database with alembic: {stderr}")
 
     async def add_repository(self, path: str, name: str) -> int:
         async with self.engine.get_session() as session:

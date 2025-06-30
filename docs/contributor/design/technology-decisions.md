@@ -82,16 +82,23 @@ This document records the key technology decisions for ca-bhfuil, focusing on **
 ### Database Migrations: Alembic
 
 **Decision**: Alembic for managing database schema migrations.
+**Current Implementation**:
+- **Single SQLite Database**: All application data stored in `~/.local/state/ca-bhfuil/ca-bhfuil.db`
+- **Migration-Only Schema Management**: DatabaseEngine no longer provides create_tables/drop_tables functions
+- **Automatic Initialization**: SQLModelDatabaseManager uses `alembic upgrade head` for database setup
+- **No Downgrade Support**: Migration scripts only implement upgrade functionality
+
 **Rationale**:
-- **Standard**: The de-facto standard for SQLAlchemy database migrations.
-- **Autogeneration**: Can automatically generate migration scripts by comparing models to the database.
-- **Version Control**: Allows database schema to be versioned and managed like source code.
-- **Robustness**: Handles complex schema changes and ensures data integrity during upgrades.
-- **Async Compatibility**: Configurable to work with asynchronous database connections.
+- **Standard**: The de-facto standard for SQLAlchemy database migrations
+- **Autogeneration**: Can automatically generate migration scripts by comparing models to the database
+- **Version Control**: Allows database schema to be versioned and managed like source code
+- **Robustness**: Handles complex schema changes and ensures data integrity during upgrades
+- **Async Compatibility**: Configured to work with asynchronous database connections
+- **Production Ready**: Separates schema management from application logic
 
 **Alternatives Considered**:
-- **Manual SQL**: Error-prone and difficult to manage for evolving schemas.
-- **SQLModel.metadata.create_all()**: Only suitable for initial schema creation or testing, not for evolving production schemas.
+- **Manual SQL**: Error-prone and difficult to manage for evolving schemas
+- **SQLModel.metadata.create_all()**: Only suitable for testing, superseded by Alembic for production use
 
 ### CLI Framework: Typer
 

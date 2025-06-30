@@ -110,20 +110,23 @@ class RepositoryEntry:
     updated_at: datetime
 
 class RepositoryRegistry:
-    """Manages repository registry database"""
+    """Manages repository registry using SQLModel and single SQLite database"""
 
-    def register_repository(self, config: RepositoryConfig) -> RepositoryEntry:
-        """Register new repository in registry"""
+    def __init__(self, db_manager: SQLModelDatabaseManager):
+        self.db_manager = db_manager
 
-    def get_repository(self, identifier: str) -> Optional[RepositoryEntry]:
-        """Get repository by name or URL path"""
+    async def register_repository(self, config: RepositoryConfig) -> RepositoryEntry:
+        """Register new repository in the single SQLite database"""
 
-    def list_repositories(self, status_filter: Optional[str] = None) -> List[RepositoryEntry]:
-        """List repositories with optional filtering"""
+    async def get_repository(self, identifier: str) -> Optional[RepositoryEntry]:
+        """Get repository by name or URL path from SQLite database"""
 
-    def update_sync_status(self, url_path: str, status: str,
+    async def list_repositories(self, status_filter: Optional[str] = None) -> List[RepositoryEntry]:
+        """List repositories with optional filtering from SQLite database"""
+
+    async def update_sync_status(self, url_path: str, status: str,
                           last_sync: datetime, stats: dict) -> None:
-        """Update repository sync metadata"""
+        """Update repository sync metadata in SQLite database"""
 ```
 
 ### Repository Cloner
