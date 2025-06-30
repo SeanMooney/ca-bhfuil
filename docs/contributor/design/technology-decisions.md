@@ -56,25 +56,28 @@ This document records the key technology decisions for ca-bhfuil, focusing on **
 - **Memcached**: Fast but no persistence
 - **Python lru_cache**: In-memory only, lost on restart
 
-### Database: SQLite
+### Database: SQLite with SQLModel ORM
 
-**Decision**: SQLite for all structured data storage  
+**Decision**: Use **SQLite** as the database engine and **SQLModel** (built on SQLAlchemy) as the ORM for all structured data storage.  
 **Rationale**:
-- **Local-First**: File-based database with no external dependencies
-- **Performance**: Fast for read-heavy workloads and moderate write loads
-- **Reliability**: ACID compliance and mature codebase
-- **Python Integration**: Excellent support in Python standard library
-- **Cross-Platform**: Works identically across all operating systems
+- **SQLite Backend**:
+    - **Local-First**: Preserves the core local-first principle with a file-based database requiring no external services.
+    - **Reliability & Simplicity**: ACID compliance, mature, and has excellent cross-platform support built into Python.
+- **SQLModel ORM Layer**:
+    - **Type Safety**: Provides Pydantic-based models for strict, type-safe data interactions, reducing runtime errors.
+    - **Maintainability**: A single, unified model for the database schema, validation, and API serialization simplifies the codebase.
+    - **Async Support**: Natively integrates with SQLAlchemy's async capabilities for non-blocking database operations.
 
 **Use Cases**:
-- Analysis results and commit metadata
-- Repository registry and configuration
-- Vector embeddings storage (with extensions)
-- Cache metadata and statistics
+- Analysis results and commit metadata.
+- Repository registry and configuration.
+- Vector embeddings storage (with extensions).
+- Cache metadata and statistics.
 
 **Alternatives Considered**:
-- **PostgreSQL**: Better for complex queries but requires external service
-- **JSON Files**: Simple but no querying capabilities or concurrency safety
+- **Raw SQLite**: Used previously, but lacks the type safety and maintainability of an ORM.
+- **PostgreSQL**: Better for complex queries but requires an external service, violating the local-first principle.
+- **JSON Files**: Simple but lacks querying capabilities and concurrency safety.
 
 ### CLI Framework: Typer
 

@@ -45,7 +45,7 @@ graph TB
 
     subgraph "Storage Layer"
         Cache[Cache Manager]
-        Database[SQLite Storage]
+        ORM[SQLModel ORM]
         Files[File Storage]
     end
 
@@ -72,10 +72,10 @@ graph TB
     Search --> Cache
     Search --> AI
     Analysis --> Git
-    Analysis --> Database
+    Analysis --> ORM
     Git --> Cache
 
-    Cache --> Database
+    Cache --> ORM
     Cache --> Files
 
     Trackers --> GitHub
@@ -89,6 +89,7 @@ graph TB
     style Search fill:#f3e5f5
     style Git fill:#e8f5e8
     style Cache fill:#fff3e0
+    style ORM fill:#e0f2f1
 ```
 
 ## Component Responsibilities
@@ -147,11 +148,11 @@ graph TB
 - Performance monitoring and optimization
 - Cache invalidation on repository changes
 
-**SQLite Storage**
-- Structured data storage for analysis results
-- Schema versioning and migration support
-- Transaction management and integrity
-- Efficient querying and indexing
+**SQLModel ORM**
+- Type-safe, async database access via SQLModel and SQLAlchemy.
+- Manages the SQLite database schema and all structured data.
+- Provides a repository pattern for clean data access.
+- Handles all transaction management and data integrity.
 
 **File Storage**
 - Configuration file management
@@ -190,7 +191,7 @@ sequenceDiagram
     participant Search
     participant Git
     participant Cache
-    participant Database
+    participant DBManager as SQLModel DB Manager
 
     User->>CLI: ca-bhfuil search "CVE-2024-1234"
     CLI->>Search: execute_search(query)
@@ -201,7 +202,8 @@ sequenceDiagram
         Search->>Git: find_commits(pattern)
         Git->>Git: pygit2 operations
         Git-->>Search: commit_list
-        Search->>Database: store_analysis(results)
+        Search->>DBManager: store_analysis(results)
+        DBManager->>DBManager: Use repository pattern to save data
         Search->>Cache: store_cache(query, results)
     end
     Search-->>CLI: formatted_results
@@ -217,16 +219,16 @@ sequenceDiagram
     participant Analysis
     participant AI
     participant Embeddings
-    participant Database
+    participant DBManager as SQLModel DB Manager
 
     User->>CLI: ca-bhfuil analyze abc123 --ai
     CLI->>Analysis: analyze_commit(sha, use_ai=True)
-    Analysis->>Database: get_commit_metadata(sha)
+    Analysis->>DBManager: get_commit_metadata(sha)
     Analysis->>AI: summarize_commit(metadata)
     AI->>AI: generate_structured_analysis
     AI-->>Analysis: analysis_result
     Analysis->>Embeddings: store_embedding(commit, embedding)
-    Analysis->>Database: store_analysis(sha, result)
+    Analysis->>DBManager: store_analysis(sha, result)
     Analysis-->>CLI: enhanced_analysis
     CLI-->>User: rich_formatted_output
 ```
@@ -234,7 +236,7 @@ sequenceDiagram
 ## Key Architectural Decisions
 
 ### Storage Strategy
-- **SQLite for structured data**: Analysis results, cache metadata, configuration
+- **SQLModel ORM for structured data**: Analysis results, cache metadata, configuration
 - **File-based for unstructured**: Logs, exports, temporary data
 - **In-memory for session**: Current search context, UI state
 - **External for repositories**: Git repositories managed separately

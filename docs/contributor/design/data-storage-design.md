@@ -63,213 +63,166 @@ Following freedesktop.org standards for Linux compatibility:
     └── analysis-temp/               # Temporary analysis files
 ```
 
-## SQLite Database Design
+## SQLModel Database Design
+
+The project has migrated from raw SQL to **SQLModel**, a modern, type-safe ORM that combines Pydantic and SQLAlchemy. This provides a single, unified data model for database schema, validation, and serialization, significantly improving maintainability and type safety.
 
 ### Schema Architecture
 
-#### Repository Analysis Database (`analysis.db`)
+The database schema is now defined using SQLModel classes, which serve as the single source of truth for data structures.
 
-```sql
--- Schema versioning for migrations
-CREATE TABLE schema_info (
-    version INTEGER PRIMARY KEY,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ca_bhfuil_version TEXT NOT NULL,
-    migration_log TEXT
-);
+#### Core Data Models (`models.py`)
 
--- Commit metadata and analysis results
-CREATE TABLE commits (
-    sha TEXT PRIMARY KEY,
-    message TEXT NOT NULL,
-    author_name TEXT NOT NULL,
-    author_email TEXT NOT NULL,
-    author_date TIMESTAMP NOT NULL,
-    committer_name TEXT NOT NULL,
-    committer_email TEXT NOT NULL,
-    committer_date TIMESTAMP NOT NULL,
-    parents TEXT, -- JSON array of parent SHAs
-    branches TEXT, -- JSON array of branch names
-    tags TEXT, -- JSON array of tag names
-    analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    analysis_version INTEGER DEFAULT 1
-);
+```python
+import datetime
+import typing
 
--- AI-enhanced analysis results
-CREATE TABLE commit_analysis (
-    sha TEXT PRIMARY KEY,
-    classification TEXT, -- bugfix, feature, security, etc.
-    summary TEXT,
-    change_impact TEXT, -- low, medium, high
-    backport_candidate BOOLEAN DEFAULT FALSE,
-    related_issues TEXT, -- JSON array of issue references
-    ai_confidence REAL, -- 0.0 to 1.0 confidence score
-    provider TEXT, -- AI provider used
-    analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sha) REFERENCES commits(sha)
-);
+import sqlalchemy
+import sqlmodel
 
--- Branch and tag tracking
-CREATE TABLE refs (
-    name TEXT PRIMARY KEY,
-    type TEXT NOT NULL, -- 'branch' or 'tag'
-    target_sha TEXT NOT NULL,
-    created_at TIMESTAMP,
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (target_sha) REFERENCES commits(sha)
-);
 
--- Search and filter indexes
-CREATE INDEX idx_commits_author_date ON commits(author_date);
-CREATE INDEX idx_commits_message_fts ON commits(message);
-CREATE INDEX idx_commit_analysis_classification ON commit_analysis(classification);
-CREATE INDEX idx_refs_type_name ON refs(type, name);
+class Repository(sqlmodel.SQLModel, table=True):
+    """Repository model for tracking git repositories."""
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    path: str = sqlmodel.Field(unique=True, index=True)
+    name: str
+    # ... other fields
+
+
+class Commit(sqlmodel.SQLModel, table=True):
+    """Commit model for storing git commit information."""
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    repository_id: int = sqlmodel.Field(foreign_key="repositories.id")
+    sha: str = sqlmodel.Field(index=True)
+    # ... other fields
+
+    repository: Repository = sqlmodel.Relationship(back_populates="commits")
+    __table_args__ = (sqlmodel.UniqueConstraint("repository_id", "sha"),)
+
+
+class Branch(sqlmodel.SQLModel, table=True):
+    """Branch model for tracking git branches."""
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    repository_id: int = sqlmodel.Field(foreign_key="repositories.id")
+    name: str = sqlmodel.Field(index=True)
+    # ... other fields
+
+    repository: Repository = sqlmodel.Relationship(back_populates="branches")
+    __table_args__ = (sqlmodel.UniqueConstraint("repository_id", "name"),)
+
 ```
 
-#### Vector Embeddings Database (`embeddings.db`)
+#### Knowledge Graph and Vector Models
 
-```sql
--- Embedding metadata
-CREATE TABLE embeddings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    content_type TEXT NOT NULL, -- 'commit_message', 'commit_diff', etc.
-    content_hash TEXT NOT NULL, -- SHA256 of content
-    sha TEXT, -- Related commit SHA (if applicable)
-    provider TEXT NOT NULL, -- ollama, openrouter, etc.
-    model TEXT NOT NULL, -- specific model used
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(content_hash, provider, model)
-);
+The schema includes forward-looking models for AI-powered features, such as a knowledge graph and vector embeddings.
 
--- Vector storage using sqlite-vec extension
-CREATE VIRTUAL TABLE vec_embeddings USING vec0(
-    embedding float[384], -- Adjust dimension based on model
-    +content_hash TEXT,
-    +provider TEXT,
-    +model TEXT
-);
+```python
+class EmbeddingRecord(sqlmodel.SQLModel, table=True):
+    """Model for storing vector embedding metadata."""
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    source_type: str
+    source_id: str
+    vector_id: str = sqlmodel.Field(unique=True)
+    content_hash: str
+    metadata_: dict[str, typing.Any] = sqlmodel.Field(
+        default_factory=dict, sa_column=sqlalchemy.Column("metadata", sqlalchemy.JSON)
+    )
 
--- Semantic search results cache
-CREATE TABLE semantic_searches (
-    query_hash TEXT PRIMARY KEY,
-    query_text TEXT NOT NULL,
-    results TEXT NOT NULL, -- JSON array of results
-    provider TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL
-);
-```
 
-#### Repository Registry Database (`repo-registry.db`)
+class KGNode(sqlmodel.SQLModel, table=True):
+    """Knowledge graph node model."""
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    node_type: str = sqlmodel.Field(index=True)
+    node_id: str
+    # ... other fields
 
-```sql
--- Global repository tracking
-CREATE TABLE repositories (
-    url_path TEXT PRIMARY KEY, -- github.com/torvalds/linux
-    name TEXT NOT NULL,
-    source_url TEXT NOT NULL,
-    repo_path TEXT NOT NULL, -- Full path to git repository
-    state_path TEXT NOT NULL, -- Full path to state directory
-    status TEXT NOT NULL, -- active, paused, error, not_synced
-    last_sync TIMESTAMP,
-    last_analysis TIMESTAMP,
-    config_hash TEXT, -- Hash of configuration for change detection
-    repo_size INTEGER DEFAULT 0, -- Git repository size in bytes
-    state_size INTEGER DEFAULT 0, -- State directory size in bytes
-    commit_count INTEGER DEFAULT 0,
-    branch_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Repository statistics and health
-CREATE TABLE repo_stats (
-    url_path TEXT,
-    stat_date DATE,
-    commits_analyzed INTEGER DEFAULT 0,
-    analysis_duration_ms INTEGER,
-    cache_hit_rate REAL,
-    errors_count INTEGER DEFAULT 0,
-    PRIMARY KEY (url_path, stat_date),
-    FOREIGN KEY (url_path) REFERENCES repositories(url_path)
-);
 ```
 
 ### Database Management
 
-#### Connection Management
+Database connections and sessions are managed through a central `DatabaseEngine` class that handles the async SQLAlchemy engine. A `SQLModelDatabaseManager` provides a high-level API for all database operations, using the repository pattern to abstract data access logic.
+
+#### Database Engine (`engine.py`)
 
 ```python
-import sqlite3
-from pathlib import Path
-from contextlib import contextmanager
-from typing import Generator
+import contextlib
+import sqlalchemy.ext.asyncio
+import sqlmodel
 
-class DatabaseManager:
-    """Manages SQLite database connections and operations"""
+class DatabaseEngine:
+    """Manages SQLAlchemy engine and session creation for SQLModel."""
 
-    def __init__(self, db_path: Path):
-        self.db_path = db_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, db_path: pathlib.Path):
+        self.database_url = f"sqlite+aiosqlite:///{db_path}"
+        self._engine = sqlalchemy.ext.asyncio.create_async_engine(self.database_url)
 
-    @contextmanager
-    def connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """Get database connection with proper cleanup"""
-        conn = sqlite3.connect(
-            self.db_path,
-            timeout=30.0,
-            check_same_thread=False
-        )
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA synchronous = NORMAL")
-        try:
-            yield conn
-        finally:
-            conn.close()
+    async def create_tables(self) -> None:
+        """Create all database tables."""
+        # Use sync engine for table creation
+        sync_engine = sqlalchemy.create_engine(f"sqlite:///{self.db_path}")
+        sqlmodel.SQLModel.metadata.create_all(sync_engine)
 
-    def initialize_schema(self) -> None:
-        """Initialize database schema with versioning"""
-        with self.connection() as conn:
-            # Check and apply schema migrations
-            schema_manager = SchemaManager(conn)
-            schema_manager.ensure_current_schema()
+    @contextlib.asynccontextmanager
+    async def get_session(self) -> typing.AsyncIterator[sqlalchemy.ext.asyncio.AsyncSession]:
+        """Get async database session context manager."""
+        async with sqlalchemy.ext.asyncio.AsyncSession(
+            self.engine, expire_on_commit=False
+        ) as session:
+            yield session
+
 ```
 
-#### Schema Versioning
+#### Repository Pattern (`repository.py`)
+
+The repository pattern encapsulates data access logic for each model, providing a clean separation of concerns.
 
 ```python
-class SchemaManager:
-    """Handles database schema versioning and migrations"""
+class BaseRepository:
+    """Base repository class with common database operations."""
+    def __init__(self, session: sqlalchemy.ext.asyncio.AsyncSession):
+        self.session = session
 
-    CURRENT_VERSION = 2
+    async def save(self, instance: sqlmodel.SQLModel) -> None:
+        self.session.add(instance)
+        await self.session.commit()
+        await self.session.refresh(instance)
 
-    def __init__(self, connection: sqlite3.Connection):
-        self.conn = connection
 
-    def ensure_current_schema(self) -> None:
-        """Ensure database is at current schema version"""
-        current_version = self._get_schema_version()
+class RepositoryRepository(BaseRepository):
+    """Repository for managing Repository entities."""
+    async def get_by_path(self, path: str) -> models.Repository | None:
+        statement = sqlmodel.select(models.Repository).where(models.Repository.path == path)
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none()
 
-        if current_version == 0:
-            self._create_initial_schema()
-            self._set_schema_version(self.CURRENT_VERSION)
-        elif current_version < self.CURRENT_VERSION:
-            self._migrate_schema(current_version)
-
-    def _migrate_schema(self, from_version: int) -> None:
-        """Apply schema migrations from old version to current"""
-        migrations = {
-            1: self._migrate_v1_to_v2,
-            # Add future migrations here
-        }
-
-        for version in range(from_version, self.CURRENT_VERSION):
-            next_version = version + 1
-            if next_version in migrations:
-                migrations[next_version]()
-                self._set_schema_version(next_version)
 ```
+
+#### High-Level Manager (`sqlmodel_manager.py`)
+
+The `SQLModelDatabaseManager` acts as the primary entry point for all database interactions from the application's business logic.
+
+```python
+class SQLModelDatabaseManager:
+    """Manages database operations using SQLModel and async SQLAlchemy."""
+
+    def __init__(self, db_path: pathlib.Path | None = None):
+        self.engine = engine.get_database_engine(db_path)
+
+    async def add_repository(self, path: str, name: str) -> int:
+        async with self.engine.get_session() as session:
+            db_repo = repository.DatabaseRepository(session)
+            existing = await db_repo.repositories.get_by_path(path)
+            if existing:
+                return existing.id or 0
+
+            repo_data = models.RepositoryCreate(path=path, name=name)
+            repo = await db_repo.repositories.create(repo_data)
+            return repo.id or 0
+```
+
+### Schema Versioning
+
+Schema migrations are no longer managed with raw SQL. SQLAlchemy's metadata and tools like Alembic (if integrated in the future) will handle schema evolution. For now, the `create_all` method ensures the schema matches the models on startup, which is suitable for the current pre-release stage.
 
 ## Caching Strategy
 

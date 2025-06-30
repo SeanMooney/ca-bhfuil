@@ -487,9 +487,14 @@ async def good_error_handling():
 #### 1. Connection Pooling
 
 ```python
-# Use connection pooling for database operations
-db_manager = AsyncDatabaseManager("db.sqlite")
-await db_manager.connect(pool_size=10)  # Limit concurrent connections
+# Use the SQLModel manager to handle connections and sessions.
+# The engine underneath manages the connection pool automatically.
+from ca_bhfuil.storage import sqlmodel_manager
+
+db_manager = await sqlmodel_manager.get_sqlmodel_database_manager()
+
+# The manager provides a high-level API that uses the pooled connections.
+repo_id = await db_manager.add_repository("/path/to/repo", "my-repo")
 ```
 
 #### 2. Rate Limiting
