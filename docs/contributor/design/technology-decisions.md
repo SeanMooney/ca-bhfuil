@@ -79,6 +79,20 @@ This document records the key technology decisions for ca-bhfuil, focusing on **
 - **PostgreSQL**: Better for complex queries but requires an external service, violating the local-first principle.
 - **JSON Files**: Simple but lacks querying capabilities and concurrency safety.
 
+### Database Migrations: Alembic
+
+**Decision**: Alembic for managing database schema migrations.
+**Rationale**:
+- **Standard**: The de-facto standard for SQLAlchemy database migrations.
+- **Autogeneration**: Can automatically generate migration scripts by comparing models to the database.
+- **Version Control**: Allows database schema to be versioned and managed like source code.
+- **Robustness**: Handles complex schema changes and ensures data integrity during upgrades.
+- **Async Compatibility**: Configurable to work with asynchronous database connections.
+
+**Alternatives Considered**:
+- **Manual SQL**: Error-prone and difficult to manage for evolving schemas.
+- **SQLModel.metadata.create_all()**: Only suitable for initial schema creation or testing, not for evolving production schemas.
+
 ### CLI Framework: Typer
 
 **Decision**: Typer with Rich integration  

@@ -7,7 +7,6 @@ import typing
 from loguru import logger
 import sqlalchemy
 import sqlalchemy.ext.asyncio
-import sqlmodel
 
 from ca_bhfuil.core import config
 
@@ -70,18 +69,6 @@ class DatabaseEngine:
             logger.debug("Created sync SQLAlchemy engine")
         return self._sync_engine
 
-    async def create_tables(self) -> None:
-        """Create all database tables."""
-        # Use sync engine for table creation as it's more reliable
-        sqlmodel.SQLModel.metadata.create_all(self.sync_engine)
-        logger.info("Created database tables")
-
-    async def drop_tables(self) -> None:
-        """Drop all database tables."""
-        # Use sync engine for table operations
-        sqlmodel.SQLModel.metadata.drop_all(self.sync_engine)
-        logger.warning("Dropped all database tables")
-
     async def close(self) -> None:
         """Close database connections."""
         if self._engine:
@@ -128,17 +115,6 @@ def get_database_engine(db_path: pathlib.Path | None = None) -> DatabaseEngine:
     if _db_engine is None:
         _db_engine = DatabaseEngine(db_path)
     return _db_engine
-
-
-async def initialize_database(db_path: pathlib.Path | None = None) -> None:
-    """Initialize the database with tables.
-
-    Args:
-        db_path: Optional database path override
-    """
-    engine = get_database_engine(db_path)
-    await engine.create_tables()
-    logger.info("Database initialized successfully")
 
 
 @contextlib.asynccontextmanager
