@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  metadata: read
 
 jobs:
   # Update dependencies and create PR if successful
@@ -136,12 +137,13 @@ jobs:
             - Security vulnerability scan completed
           title: "chore: weekly dependency updates"
           body-path: dependency_changes.md
-          branch: deps/automated-updates
+          branch: deps/automated-updates-${{ github.run_number }}
           delete-branch: true
+          draft: true
           labels: |
             dependencies
             automated
-          reviewers: ${{ github.repository_owner }}
+          assignees: ${{ github.repository_owner }}
 
       - name: 📊 Summary
         run: |
