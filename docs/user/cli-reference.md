@@ -297,16 +297,134 @@ ca-bhfuil repo add https://github.com/user/repo --force
 List configured repositories.
 
 ```bash
-ca-bhfuil repo list
+ca-bhfuil repo list [OPTIONS]
 ```
 
+**Options:**
+- `--format`, `-f`: Output format: `table` (default), `json`, or `yaml`
+- `--verbose`, `-v`: Show additional repository details
+
 **Description:**
-Displays all configured repositories with their status and metadata.
+Displays all configured repositories with their status and metadata. Supports multiple output formats and verbose mode for detailed information.
 
 **Examples:**
 ```bash
-# List all repositories
+# List all repositories (default table format)
 ca-bhfuil repo list
+
+# List repositories in JSON format
+ca-bhfuil repo list --format json
+
+# List repositories in YAML format
+ca-bhfuil repo list --format yaml
+
+# List repositories with verbose details
+ca-bhfuil repo list --verbose
+
+# Combine format and verbose options
+ca-bhfuil repo list --format json --verbose
+```
+
+#### repo update
+
+Update/sync a configured repository with its remote.
+
+```bash
+ca-bhfuil repo update [OPTIONS] NAME
+```
+
+**Arguments:**
+- `NAME`: Repository name to update
+
+**Options:**
+- `--force`, `-f`: Force update even if no changes detected
+- `--verbose`, `-v`: Show detailed update progress
+
+**Description:**
+Updates a single repository by synchronizing it with its remote. Shows progress during the update operation and provides detailed feedback on the changes made.
+
+**Examples:**
+```bash
+# Update a specific repository
+ca-bhfuil repo update my-repo
+
+# Force update even if no changes detected
+ca-bhfuil repo update my-repo --force
+
+# Update with verbose progress information
+ca-bhfuil repo update my-repo --verbose
+
+# Combine force and verbose options
+ca-bhfuil repo update my-repo --force --verbose
+```
+
+#### repo remove
+
+Remove a repository from configuration (optionally delete files).
+
+```bash
+ca-bhfuil repo remove [OPTIONS] NAME
+```
+
+**Arguments:**
+- `NAME`: Repository name to remove
+
+**Options:**
+- `--force`, `-f`: Skip confirmation prompt
+- `--keep-files`: Keep repository files, only remove from config
+
+**Description:**
+Removes a repository from the configuration. By default, prompts for confirmation and asks whether to delete the repository files. Can be configured to skip prompts or preserve files.
+
+**Examples:**
+```bash
+# Remove repository with interactive confirmation
+ca-bhfuil repo remove my-repo
+
+# Remove repository without confirmation
+ca-bhfuil repo remove my-repo --force
+
+# Remove from config but keep files
+ca-bhfuil repo remove my-repo --keep-files
+
+# Remove without confirmation and keep files
+ca-bhfuil repo remove my-repo --force --keep-files
+```
+
+#### repo sync
+
+Sync all configured repositories or a specific one.
+
+```bash
+ca-bhfuil repo sync [OPTIONS] [NAME]
+```
+
+**Arguments:**
+- `NAME`: Repository name to sync (syncs all if not specified)
+
+**Options:**
+- `--force`, `-f`: Force sync even if no changes detected
+- `--verbose`, `-v`: Show detailed sync progress
+
+**Description:**
+Synchronizes repositories with their remotes. Can sync all repositories at once or target a specific repository. Shows progress information and provides detailed feedback on the sync results.
+
+**Examples:**
+```bash
+# Sync all repositories
+ca-bhfuil repo sync
+
+# Sync a specific repository
+ca-bhfuil repo sync my-repo
+
+# Force sync all repositories
+ca-bhfuil repo sync --force
+
+# Sync with verbose progress information
+ca-bhfuil repo sync --verbose
+
+# Sync specific repository with force and verbose
+ca-bhfuil repo sync my-repo --force --verbose
 ```
 
 ## Configuration Files
@@ -497,6 +615,30 @@ ca-bhfuil repo add https://github.com/user/project --name my-project
 # List configured repositories
 ca-bhfuil repo list
 
+# List repositories in JSON format
+ca-bhfuil repo list --format json
+
+# Update a specific repository
+ca-bhfuil repo update my-project
+
+# Update with verbose progress
+ca-bhfuil repo update my-project --verbose
+
+# Sync all repositories
+ca-bhfuil repo sync
+
+# Sync a specific repository
+ca-bhfuil repo sync my-project
+
+# Remove a repository (with confirmation)
+ca-bhfuil repo remove my-project
+
+# Remove repository without confirmation
+ca-bhfuil repo remove my-project --force
+
+# Remove from config but keep files
+ca-bhfuil repo remove my-project --keep-files
+
 # Check repository status
 ca-bhfuil status --repo /path/to/repo
 ```
@@ -570,8 +712,11 @@ source scripts/ca-bhfuil-completion.bash
 ### Features
 
 The bash completion provides:
-- Command and subcommand completion
-- Option flag completion (`--repos`, `--global`, `--auth`, etc.)
-- Format completion for `--format` option (`yaml`, `json`)
+- Command and subcommand completion (`config`, `repo`, `search`, `status`)
+- Config subcommand completion (`init`, `validate`, `status`, `show`)
+- Repo subcommand completion (`add`, `list`, `update`, `remove`, `sync`)
+- Option flag completion (`--repos`, `--global`, `--auth`, `--format`, `--verbose`, etc.)
+- Format completion for `--format` option (`table`, `json`, `yaml`)
+- Repository name completion for repo commands (`update`, `remove`, `sync`)
 - Directory path completion for `--repo` option
 - Smart completion that respects mutually exclusive options

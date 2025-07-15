@@ -239,10 +239,13 @@ class TestBashCompletionGeneration:
         assert "complete -F _ca_bhfuil_completion ca-bhfuil" in script
 
         # Check for main commands
-        assert "config search status" in script
+        assert "config repo search status" in script
 
         # Check for config subcommands
         assert "init validate status show" in script
+
+        # Check for repo subcommands
+        assert "add list update remove sync" in script
 
         # Check for format options
         assert "yaml json" in script

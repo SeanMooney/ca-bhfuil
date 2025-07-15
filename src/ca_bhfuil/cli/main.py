@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import pathlib
+import shutil
 import subprocess
 import traceback
 
@@ -21,6 +22,7 @@ from ca_bhfuil.cli.async_bridge import run_async
 from ca_bhfuil.cli.async_bridge import with_progress
 from ca_bhfuil.core import async_config
 from ca_bhfuil.core import async_repository
+from ca_bhfuil.core import async_sync
 from ca_bhfuil.core import config
 from ca_bhfuil.core.git import async_git
 from ca_bhfuil.core.git import clone
@@ -59,6 +61,26 @@ db_app = typer.Typer(
 app.add_typer(db_app, name="db")
 
 rich_console = console.Console()
+
+
+def _build_repo_data(
+    repo: config.RepositoryConfig, verbose: bool
+) -> dict[str, str | None]:
+    """Build a standardized repository data dictionary."""
+    repo_dict = {
+        "name": repo.name,
+        "url": repo.source.get("url", "N/A"),
+        "auth_key": repo.auth_key or "default",
+        "type": repo.source.get("type", "git"),
+    }
+    if verbose:
+        repo_dict.update(
+            {
+                "clone_url": repo.source.get("clone_url"),
+                "branch": repo.source.get("branch", "main"),
+            }
+        )
+    return repo_dict
 
 
 @db_app.command("upgrade")
@@ -683,7 +705,18 @@ async def repo_add(
 
 @repo_app.command("list")
 @async_command
-async def repo_list() -> None:
+async def repo_list(
+    format: str = typer.Option(
+        "table",
+        "--format",
+        "-f",
+        help="Output format: table, json, yaml",
+        autocompletion=completion.complete_format,
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show additional repository details"
+    ),
+) -> None:
     """List all configured repositories."""
     try:
         config_manager = await async_config.get_async_config_manager()
@@ -697,25 +730,313 @@ async def repo_list() -> None:
             rich_console.print("💡 Use 'ca-bhfuil repo add <url>' to add repositories")
             return
 
-        repos_table = table.Table(title="Configured Repositories")
-        repos_table.add_column("Name", style="cyan")
-        repos_table.add_column("URL", style="green")
-        repos_table.add_column("Auth", style="yellow")
-        repos_table.add_column("Status", style="blue")
+        if format == "json":
+            repos_data = [_build_repo_data(repo, verbose) for repo in config.repos]
+            rich_console.print_json(json.dumps(repos_data, indent=2))
+        elif format == "yaml":
+            repos_data = [_build_repo_data(repo, verbose) for repo in config.repos]
+            yaml_str = yaml.dump(repos_data, default_flow_style=False)
+            syntax_obj = syntax.Syntax(yaml_str, "yaml", theme="monokai")
+            rich_console.print(syntax_obj)
+        else:  # table format
+            repos_table = table.Table(title="Configured Repositories")
+            repos_table.add_column("Name", style="cyan")
+            repos_table.add_column("URL", style="green")
+            repos_table.add_column("Auth", style="yellow")
+            if verbose:
+                repos_table.add_column("Type", style="blue")
+                repos_table.add_column("Branch", style="magenta")
 
-        for repo in config.repos:
-            repos_table.add_row(
-                repo.name,
-                repo.source.get("url", "N/A"),
-                repo.auth_key or "default",
-                "📦 Configured",  # TODO: Add actual status check
-            )
+            for repo in config.repos:
+                row_data = [
+                    repo.name,
+                    repo.source.get("url", "N/A"),
+                    repo.auth_key or "default",
+                ]
+                if verbose:
+                    row_data.extend(
+                        [
+                            repo.source.get("type", "git"),
+                            repo.source.get("branch", "main"),
+                        ]
+                    )
+                repos_table.add_row(*row_data)
 
-        rich_console.print(repos_table)
-        rich_console.print(f"📊 Total repositories: {len(config.repos)}")
+            rich_console.print(repos_table)
+            rich_console.print(f"📊 Total repositories: {len(config.repos)}")
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error listing repositories: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
+@repo_app.command("update")
+@async_command
+async def repo_update(
+    name: str = typer.Argument(
+        ...,
+        help="Repository name to update",
+        autocompletion=completion.complete_repository_name,
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force update even if no changes detected"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed update progress"
+    ),
+) -> None:
+    """Update/sync a configured repository with its remote."""
+    try:
+        config_manager = await async_config.get_async_config_manager()
+        synchronizer = async_sync.AsyncRepositorySynchronizer()
+
+        # Load configuration and find the repository
+        config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
+
+        repo_config = None
+        for repo in config.repos:
+            if repo.name == name:
+                repo_config = repo
+                break
+
+        if not repo_config:
+            rich_console.print(f"[red]❌ Repository '{name}' not found[/red]")
+            rich_console.print(
+                "💡 Use 'ca-bhfuil repo list' to see available repositories"
+            )
+            raise typer.Exit(1)
+
+        repo_path = repo_config.repo_path
+        if not repo_path.exists():
+            rich_console.print(
+                f"[red]❌ Repository '{name}' not found at {repo_path}[/red]"
+            )
+            rich_console.print("💡 The repository may need to be cloned first")
+            raise typer.Exit(1)
+
+        rich_console.print(f"🔄 Updating repository: {name}")
+        rich_console.print(f"📁 Path: {repo_path}")
+
+        # Perform the update/sync operation
+        # Note: force parameter is reserved for future use
+        _ = force  # Explicitly acknowledge unused parameter
+        update_result = await with_progress(
+            synchronizer.sync_repository(name),
+            f"Updating {name}...",
+        )
+
+        if update_result.success:
+            rich_console.print(f"[green]✅ Successfully updated {name}[/green]")
+            if verbose and update_result.result:
+                changes = update_result.result
+                commits_before = changes.get("commits_before", 0)
+                commits_after = changes.get("commits_after", 0)
+                if commits_before != commits_after:
+                    rich_console.print(
+                        f"📥 Repository updated: {commits_before} → {commits_after} commits"
+                    )
+                else:
+                    rich_console.print("📊 Repository is up to date")
+        else:
+            rich_console.print(
+                f"[red]❌ Failed to update repository: {update_result.error}[/red]"
+            )
+            raise typer.Exit(1)
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error updating repository: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
+@repo_app.command("remove")
+@async_command
+async def repo_remove(
+    name: str = typer.Argument(
+        ...,
+        help="Repository name to remove",
+        autocompletion=completion.complete_repository_name,
+    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+    keep_files: bool = typer.Option(
+        False, "--keep-files", help="Keep repository files, only remove from config"
+    ),
+) -> None:
+    """Remove a repository from configuration (optionally delete files)."""
+    try:
+        config_manager = await async_config.get_async_config_manager()
+
+        # Load configuration and find the repository
+        config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
+
+        repo_config = None
+        repo_index = None
+        for i, repo in enumerate(config.repos):
+            if repo.name == name:
+                repo_config = repo
+                repo_index = i
+                break
+
+        if repo_config is None:
+            rich_console.print(f"[red]❌ Repository '{name}' not found[/red]")
+            rich_console.print(
+                "💡 Use 'ca-bhfuil repo list' to see available repositories"
+            )
+            raise typer.Exit(1)
+
+        # Show repository details
+        rich_console.print(f"🗑️  Removing repository: {name}")
+        rich_console.print(f"📁 URL: {repo_config.source.get('url', 'N/A')}")
+        rich_console.print(f"📂 Path: {repo_config.repo_path}")
+
+        if not force:
+            # Interactive confirmation
+            confirm = typer.confirm("Are you sure you want to remove this repository?")
+            if not confirm:
+                rich_console.print("[yellow]Removal cancelled[/yellow]")
+                raise typer.Exit(0)
+
+            if not keep_files:
+                confirm_delete = typer.confirm(
+                    f"Also delete repository files at {repo_config.repo_path}?"
+                )
+                keep_files = not confirm_delete
+
+        # Remove from configuration
+        removed_repo = config.repos.pop(repo_index)
+
+        await with_progress(
+            config_manager.save_configuration(config),
+            "Updating configuration...",
+        )
+
+        rich_console.print(f"[green]✅ Removed '{name}' from configuration[/green]")
+
+        # Handle file deletion if requested
+        if not keep_files:
+            repo_path = removed_repo.repo_path
+            if repo_path.exists():
+                try:
+                    await with_progress(
+                        asyncio.to_thread(shutil.rmtree, repo_path),
+                        f"Deleting files at {repo_path}...",
+                    )
+                    rich_console.print("[green]✅ Deleted repository files[/green]")
+                except Exception as e:
+                    rich_console.print(
+                        f"[yellow]⚠️  Failed to delete files: {e}[/yellow]"
+                    )
+                    rich_console.print(f"💡 You can manually delete: {repo_path}")
+            else:
+                rich_console.print(
+                    "[yellow]⚠️  Repository files not found (already deleted)[/yellow]"
+                )
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error removing repository: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
+@repo_app.command("sync")
+@async_command
+async def repo_sync(
+    name: str | None = typer.Argument(
+        None,
+        help="Repository name to sync (syncs all if not specified)",
+        autocompletion=completion.complete_repository_name,
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force sync even if no changes detected"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed sync progress"
+    ),
+) -> None:
+    """Sync all configured repositories or a specific one."""
+    try:
+        config_manager = await async_config.get_async_config_manager()
+        synchronizer = async_sync.AsyncRepositorySynchronizer()
+
+        config = await with_progress(
+            config_manager.load_configuration(), "Loading configuration..."
+        )
+
+        if not config.repos:
+            rich_console.print("[yellow]No repositories configured[/yellow]")
+            rich_console.print("💡 Use 'ca-bhfuil repo add <url>' to add repositories")
+            return
+
+        # Determine which repositories to sync
+        repos_to_sync = []
+        if name:
+            # Sync specific repository
+            for repo in config.repos:
+                if repo.name == name:
+                    repos_to_sync.append(repo)
+                    break
+            if not repos_to_sync:
+                rich_console.print(f"[red]❌ Repository '{name}' not found[/red]")
+                rich_console.print(
+                    "💡 Use 'ca-bhfuil repo list' to see available repositories"
+                )
+                raise typer.Exit(1)
+        else:
+            # Sync all repositories
+            repos_to_sync = config.repos
+
+        rich_console.print(f"🔄 Syncing {len(repos_to_sync)} repository(s)...")
+
+        success_count = 0
+        error_count = 0
+
+        for repo in repos_to_sync:
+            try:
+                repo_path = repo.repo_path
+                if not repo_path.exists():
+                    rich_console.print(
+                        f"[yellow]⚠️  Skipping {repo.name}: repository not found at {repo_path}[/yellow]"
+                    )
+                    error_count += 1
+                    continue
+
+                if verbose:
+                    rich_console.print(f"📁 Syncing {repo.name}...")
+
+                # Note: force parameter is reserved for future use
+                _ = force  # Explicitly acknowledge unused parameter
+                sync_result = await with_progress(
+                    synchronizer.sync_repository(repo.name),
+                    f"Syncing {repo.name}...",
+                )
+
+                if sync_result.success:
+                    success_count += 1
+                    if verbose:
+                        rich_console.print(
+                            f"[green]✅ {repo.name} synced successfully[/green]"
+                        )
+                else:
+                    error_count += 1
+                    rich_console.print(
+                        f"[red]❌ Failed to sync {repo.name}: {sync_result.error}[/red]"
+                    )
+
+            except Exception as e:
+                error_count += 1
+                rich_console.print(f"[red]❌ Error syncing {repo.name}: {e}[/red]")
+
+        # Summary
+        rich_console.print(
+            f"\n📊 Sync complete: {success_count} successful, {error_count} failed"
+        )
+        if error_count > 0:
+            raise typer.Exit(1)
+
+    except Exception as e:
+        rich_console.print(f"[red]❌ Error syncing repositories: {e}[/red]")
         raise typer.Exit(1) from e
 
 
