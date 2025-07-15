@@ -138,6 +138,48 @@ class TestAsyncRepositorySynchronizer:
             mock_update.assert_called_once_with(sample_repo_config, sync_result)
 
     @pytest.mark.asyncio
+    async def test_sync_repository_auto_healing(
+        self, async_synchronizer, sample_repo_config, temp_repo_path
+    ):
+        """Test sync repository auto-registers missing repositories through update_repository_stats."""
+        # Mock git directory exists
+        git_dir = temp_repo_path / ".git"
+        git_dir.mkdir()
+
+        async_synchronizer.config_manager.get_repository_config_by_name.return_value = (
+            sample_repo_config
+        )
+
+        # Mock the sync operation
+        sync_result = {
+            "success": True,
+            "repository": "test-repo",
+            "commits_after": 10,
+        }
+
+        # Mock _update_registry_after_sync to verify it gets called
+        with (
+            mock.patch.object(
+                async_synchronizer.git_manager,
+                "run_in_executor",
+                return_value=sync_result,
+            ),
+            mock.patch.object(
+                async_synchronizer,
+                "_update_registry_after_sync",
+            ) as mock_update_registry,
+        ):
+            result = await async_synchronizer.sync_repository("test-repo")
+
+            assert result.success is True
+            assert result.result == sync_result
+            # Verify that _update_registry_after_sync was called - this method calls
+            # update_repository_stats which handles auto-registration
+            mock_update_registry.assert_called_once_with(
+                sample_repo_config, sync_result
+            )
+
+    @pytest.mark.asyncio
     async def test_sync_repository_not_found_in_config(self, async_synchronizer):
         """Test async sync when repository not found in configuration."""
         async_synchronizer.config_manager.get_repository_config_by_name.return_value = (

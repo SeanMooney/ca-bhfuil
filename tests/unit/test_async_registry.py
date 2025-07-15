@@ -149,6 +149,39 @@ class TestAsyncRepositoryRegistry:
         assert success is False
 
     @pytest.mark.asyncio
+    async def test_update_repository_stats_auto_registration(
+        self, repository_registry, sample_repo_config, tmp_path
+    ):
+        """Test auto-registration of repository during stats update."""
+        # Create a fake git repository directory
+        repo_path = tmp_path / "test-repo"
+        repo_path.mkdir()
+        git_dir = repo_path / ".git"
+        git_dir.mkdir()
+
+        # Update the sample config to point to our test path
+        sample_repo_config.source["path"] = str(repo_path)
+
+        # Mock config manager to return repo config
+        with mock.patch.object(
+            repository_registry.config_manager,
+            "get_repository_config_by_name",
+            return_value=sample_repo_config,
+        ):
+            # Don't register repository first - let update_repository_stats auto-register it
+            success = await repository_registry.update_repository_stats(
+                "test-repo", 100, 5
+            )
+            assert success is True
+
+            # Verify repository was auto-registered and stats were updated
+            state = await repository_registry.get_repository_state("test-repo")
+            assert state["registered"] is True
+            assert state["commit_count"] == 100
+            assert state["branch_count"] == 5
+
+
+    @pytest.mark.asyncio
     async def test_add_commit(self, repository_registry, sample_repo_config):
         """Test adding a commit to the repository."""
         # Mock config manager to return repo config

@@ -119,6 +119,55 @@ class TestRepoAdd:
             mock_cloner.clone_repository.assert_called_once()
             mock_config_manager.save_configuration.assert_called_once()
 
+    def test_repo_add_database_registration(
+        self, cli_runner, temp_config_dir, mock_config_manager, mock_with_progress
+    ):
+        """Test that repo add command registers repository in database."""
+        # Setup mock configuration
+        mock_config = mock.Mock()
+        mock_config.repos = []
+        mock_config_manager.load_configuration.return_value = mock_config
+        mock_config_manager.save_configuration.return_value = None
+
+        # Mock git manager and cloner
+        with (
+            mock.patch(
+                "ca_bhfuil.core.git.async_git.AsyncGitManager"
+            ) as mock_git_manager_class,
+            mock.patch(
+                "ca_bhfuil.core.git.clone.AsyncRepositoryCloner"
+            ) as mock_cloner_class,
+            mock.patch(
+                "ca_bhfuil.core.async_registry.get_async_repository_registry"
+            ) as mock_get_registry,
+        ):
+            mock_git_manager = mock.AsyncMock()
+            mock_git_manager_class.return_value = mock_git_manager
+
+            mock_cloner = mock.AsyncMock()
+            mock_cloner_class.return_value = mock_cloner
+
+            mock_clone_result = mock.Mock()
+            mock_clone_result.success = True
+            mock_clone_result.repository_path = pathlib.Path("/path/to/repo")
+            mock_cloner.clone_repository.return_value = mock_clone_result
+
+            mock_registry = mock.AsyncMock()
+            mock_registry.register_repository.return_value = 1
+            mock_get_registry.return_value = mock_registry
+
+            result = cli_runner.invoke(
+                main.app, ["repo", "add", "https://github.com/test/test-repo.git"]
+            )
+
+            assert result.exit_code == 0
+            assert "Successfully cloned test-repo" in result.stdout
+            assert "Repository added to configuration and database!" in result.stdout
+
+            # Verify database registration was called
+            mock_registry.register_repository.assert_called_once()
+            mock_config_manager.save_configuration.assert_called_once()
+
     def test_repo_add_with_custom_name(
         self, cli_runner, temp_config_dir, mock_config_manager, mock_with_progress
     ):
