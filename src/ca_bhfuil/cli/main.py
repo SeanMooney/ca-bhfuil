@@ -21,6 +21,7 @@ from ca_bhfuil.cli.async_bridge import async_command
 from ca_bhfuil.cli.async_bridge import run_async
 from ca_bhfuil.cli.async_bridge import with_progress
 from ca_bhfuil.core import async_config
+from ca_bhfuil.core import async_registry
 from ca_bhfuil.core import async_repository
 from ca_bhfuil.core import async_sync
 from ca_bhfuil.core import config
@@ -638,6 +639,7 @@ async def repo_add(
         config_manager = await async_config.get_async_config_manager()
         git_manager = async_git.AsyncGitManager()
         cloner = clone.AsyncRepositoryCloner(git_manager)
+        repo_registry = await async_registry.get_async_repository_registry()
 
         # Load existing configuration
         current_config = await with_progress(
@@ -696,7 +698,15 @@ async def repo_add(
             "Updating configuration...",
         )
 
-        rich_console.print("[green]✅ Repository added to configuration![/green]")
+        # Register the repository in the database
+        await with_progress(
+            repo_registry.register_repository(new_repo_config),
+            "Registering repository in database...",
+        )
+
+        rich_console.print(
+            "[green]✅ Repository added to configuration and database![/green]"
+        )
 
     except Exception as e:
         rich_console.print(f"[red]❌ Error adding repository: {e}[/red]")

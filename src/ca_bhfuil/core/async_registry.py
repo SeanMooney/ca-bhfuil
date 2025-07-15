@@ -163,7 +163,24 @@ class AsyncRepositoryRegistry:
                 f"Updated stats for {repo_name}: {commit_count} commits, {branch_count} branches"
             )
             return True
-        logger.warning(f"Repository {repo_name} not found in database")
+
+        # Repository not found in database - auto-register it if it exists on filesystem
+        if repo_config.repo_path.exists() and (repo_config.repo_path / ".git").exists():
+            logger.info(
+                f"Auto-registering repository {repo_name} in database during sync"
+            )
+            repo_id = await self.register_repository(repo_config)
+            await self.db_manager.update_repository_stats(
+                repo_id, commit_count, branch_count
+            )
+            logger.debug(
+                f"Auto-registered and updated stats for {repo_name}: {commit_count} commits, {branch_count} branches"
+            )
+            return True
+
+        logger.warning(
+            f"Repository {repo_name} not found in database and does not exist on filesystem"
+        )
         return False
 
     async def add_commit(
