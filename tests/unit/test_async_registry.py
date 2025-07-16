@@ -180,7 +180,6 @@ class TestAsyncRepositoryRegistry:
             assert state["commit_count"] == 100
             assert state["branch_count"] == 5
 
-
     @pytest.mark.asyncio
     async def test_add_commit(self, repository_registry, sample_repo_config):
         """Test adding a commit to the repository."""
