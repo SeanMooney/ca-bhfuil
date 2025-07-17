@@ -69,7 +69,11 @@ class AsyncRepositorySynchronizer:
                         error=f"Repository path does not exist: {repo_config.repo_path}",
                     )
 
-                if not (repo_config.repo_path / ".git").exists():
+                # Check if it's a git repository (handle both regular and bare repos)
+                if not (
+                    (repo_config.repo_path / ".git").exists()
+                    or (repo_config.repo_path / "refs").exists()
+                ):
                     return results_models.OperationResult(
                         success=False,
                         duration=time.time() - start_time,
@@ -118,7 +122,8 @@ class AsyncRepositorySynchronizer:
                 "commits_after": 0,
             }
 
-        if not (repo_path / ".git").exists():
+        # Check if it's a git repository (handle both regular and bare repos)
+        if not ((repo_path / ".git").exists() or (repo_path / "refs").exists()):
             return {
                 "success": False,
                 "error": f"Not a git repository: {repo_path}",

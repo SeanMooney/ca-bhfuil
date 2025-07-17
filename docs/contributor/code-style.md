@@ -602,6 +602,321 @@ import really.long.module.name as module_name
 from module import specific_function, AnotherClass
 ```
 
+## Testing Strategy
+
+### Testing Philosophy
+
+Ca-Bhfuil uses a **dual-track testing approach** with clear separation between unit and integration tests:
+
+#### Unit Tests (`tests/unit/`)
+- **Purpose**: Fast, isolated testing of individual components
+- **Mocking**: Heavy mocking of external dependencies is **required**
+- **Scope**: Single class/function, isolated from filesystem, network, database
+- **Speed**: Must be fast (<100ms per test)
+- **Dependencies**: Mock all external systems (git, database, filesystem, network)
+
+#### Integration Tests (`tests/integration/`)
+- **Purpose**: End-to-end testing of real system interactions
+- **Mocking**: Minimal mocking - use real systems **preferred**
+- **Scope**: Multiple components working together
+- **Speed**: Can be slower (1-10s per test)
+- **Dependencies**: Use real git repositories, temporary databases, actual file operations
+
+### Test Strategy Matrix
+
+| Test Type | Git Operations | Database | Filesystem | Network | Mocking Level |
+|-----------|---------------|----------|------------|---------|---------------|
+| Unit      | Mock git calls | Mock DB  | Mock paths | Mock HTTP | Heavy (90%+) |
+| Integration| Real git repos | Temp DB | Temp dirs | Real/Skip | Light (10%) |
+
+### Unit Test Guidelines
+
+**What to Mock in Unit Tests**:
+- All git operations (pygit2 calls)
+- Database operations (SQLAlchemy, async sessions)
+- Filesystem operations (pathlib.Path methods)
+- Network requests (HTTP calls)
+- External processes (subprocess calls)
+
+**Unit Test Structure**:
+```python
+class TestGitOperations:
+    """Unit tests for git operations."""
+
+    @pytest.fixture
+    def mock_repo(self):
+        """Mock git repository."""
+        return mock.Mock(spec=pygit2.Repository)
+
+    @mock.patch("pygit2.Repository")
+    def test_clone_repository_success(self, mock_repo_class, mock_repo):
+        """Test successful repository cloning."""
+        mock_repo_class.return_value = mock_repo
+        mock_repo.is_empty = False
+
+        result = git_operations.clone_repository("fake-url", "/fake/path")
+
+        assert result.success is True
+        mock_repo_class.assert_called_once_with("/fake/path")
+
+    @mock.patch("pathlib.Path.exists", return_value=False)
+    def test_clone_repository_path_missing(self, mock_exists):
+        """Test cloning when target path doesn't exist."""
+        result = git_operations.clone_repository("fake-url", "/missing/path")
+
+        assert result.success is False
+        assert "path doesn't exist" in result.error
+```
+
+### Integration Test Guidelines
+
+**What NOT to Mock in Integration Tests**:
+- Git operations (use real git repositories)
+- Database operations (use temporary SQLite databases)
+- Filesystem operations (use temporary directories)
+- Configuration loading (use real config files in temp dirs)
+
+**Integration Test Structure**:
+```python
+class TestRepositorySync:
+    """Integration tests for repository synchronization."""
+
+    @pytest.mark.asyncio
+    async def test_full_sync_workflow(self, integration_test_environment):
+        """Test complete sync workflow with real systems."""
+        env = integration_test_environment()
+
+        with env["xdg_context"] as xdg_dirs:
+            test_repo = env["test_repo"]
+
+            # Create repository config using file:// protocol
+            repo_config = config.RepositoryConfig(
+                name="test-repo",
+                source={"url": f"file://{test_repo.path}", "type": "git"},
+            )
+
+            # Use real database in XDG state directory
+            db_manager = SQLModelDatabaseManager(xdg_dirs["state"] / "test.db")
+            await db_manager.initialize()
+
+            # Use real config manager with XDG config directory
+            config_manager = AsyncConfigManager(xdg_dirs["config"] / "ca-bhfuil")
+            await config_manager.generate_default_config()
+
+            # Test with real components
+            synchronizer = AsyncRepositorySynchronizer(config_manager, db_manager)
+            result = await synchronizer.sync_repository("test-repo")
+            assert result.success is True
+```
+
+### Environment Isolation for Integration Tests
+
+**Critical**: Integration tests must use proper XDG fixtures to ensure complete isolation:
+
+#### Correct XDG Fixture Pattern
+
+Create reusable fixtures in `tests/integration/conftest.py`:
+
+```python
+@pytest.fixture
+def fake_home_dir():
+    """Create a fake home directory with proper XDG structure."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fake_home = pathlib.Path(tmp_dir)
+
+        # Create standard XDG directory structure
+        config_dir = fake_home / ".config"
+        cache_dir = fake_home / ".cache"
+        state_dir = fake_home / ".local" / "state"
+
+        config_dir.mkdir(parents=True)
+        cache_dir.mkdir(parents=True)
+        state_dir.mkdir(parents=True)
+
+        yield {
+            "home": fake_home,
+            "config": config_dir,
+            "cache": cache_dir,
+            "state": state_dir,
+        }
+
+@pytest.fixture
+def isolated_xdg_environment(fake_home_dir):
+    """Set up isolated XDG environment variables."""
+    @contextmanager
+    def xdg_context():
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "XDG_CONFIG_HOME": str(fake_home_dir["config"]),
+                "XDG_CACHE_HOME": str(fake_home_dir["cache"]),
+                "XDG_STATE_HOME": str(fake_home_dir["state"]),
+            },
+            clear=False,
+        ):
+            yield fake_home_dir
+    return xdg_context
+```
+
+#### Usage in Integration Tests
+
+```python
+@pytest.mark.asyncio
+async def test_with_proper_xdg_isolation(isolated_xdg_environment):
+    """Integration test with proper XDG isolation."""
+    with isolated_xdg_environment() as xdg_dirs:
+        # Initialize components with XDG directories
+        config_manager = AsyncConfigManager(xdg_dirs["config"] / "ca-bhfuil")
+        db_manager = SQLModelDatabaseManager(xdg_dirs["state"] / "test.db")
+
+        # All config/cache/state operations happen in isolated XDG structure
+        await config_manager.generate_default_config()
+        await db_manager.initialize()
+```
+
+#### What This Creates
+
+The fixture creates a proper XDG directory structure:
+```
+fake_home/
+├── .config/          (XDG_CONFIG_HOME points here)
+├── .cache/           (XDG_CACHE_HOME points here)
+└── .local/
+    └── state/        (XDG_STATE_HOME points here)
+```
+
+#### Common Anti-Pattern (AVOID)
+
+```python
+# WRONG: Incorrect XDG structure
+@mock.patch.dict(
+    "os.environ",
+    {
+        "XDG_CONFIG_HOME": str(tmp_dir / "config"),  # Wrong: should be base dir
+        "XDG_CACHE_HOME": str(tmp_dir / "cache"),    # Wrong: should be base dir
+        "XDG_STATE_HOME": str(tmp_dir / "state"),    # Wrong: should be base dir
+    },
+    clear=False,
+)
+def test_with_incorrect_xdg():
+    """This creates wrong directory structure."""
+    pass
+```
+
+### Test Repository Creation
+
+Use the `TestRepository` fixture for creating real git repositories:
+
+```python
+from tests.fixtures import repositories
+
+def test_with_real_repo():
+    """Test with actual git repository."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        repo_path = pathlib.Path(tmp_dir) / "test-repo"
+        test_repo = repositories.TestRepository(repo_path)
+
+        # Add commits
+        test_repo.add_file("file1.txt", "content")
+        test_repo.commit("Add file1", "commit1")
+
+        # Create branches
+        test_repo.create_branch("feature")
+        test_repo.checkout_branch("feature")
+
+        # Test with real git operations
+        result = analyze_repository(repo_path)
+        assert result.commit_count == 1
+        assert "feature" in result.branches
+```
+
+### Database Testing
+
+**Unit Tests**: Mock database operations
+```python
+@mock.patch("sqlalchemy.create_engine")
+def test_database_connection(self, mock_create_engine):
+    """Test database connection logic."""
+    mock_create_engine.return_value = mock_engine
+    # Test connection logic
+```
+
+**Integration Tests**: Use real temporary databases
+```python
+async def test_repository_registration():
+    """Test repository registration with real database."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = pathlib.Path(tmp_dir) / "test.db"
+        db_manager = SQLModelDatabaseManager(db_path)
+        await db_manager.initialize()
+
+        # Test with real database operations
+        repo_id = await db_manager.register_repository(repo_config)
+        assert repo_id > 0
+```
+
+### Test Naming Conventions
+
+**Unit Tests**:
+- `test_method_name_condition_expected_outcome`
+- `test_clone_repository_success`
+- `test_clone_repository_invalid_url_raises_error`
+
+**Integration Tests**:
+- `test_workflow_name_end_to_end`
+- `test_repo_add_sync_workflow`
+- `test_full_clone_and_analyze_workflow`
+
+### Test Markers
+
+Use pytest markers to categorize tests:
+
+```python
+@pytest.mark.unit
+def test_unit_functionality():
+    """Unit test marker."""
+    pass
+
+@pytest.mark.integration
+def test_integration_workflow():
+    """Integration test marker."""
+    pass
+
+@pytest.mark.slow
+def test_long_running_operation():
+    """Mark slow tests."""
+    pass
+
+@pytest.mark.network
+def test_network_dependent():
+    """Mark tests requiring network."""
+    pass
+```
+
+### Test Performance Guidelines
+
+**Unit Tests**:
+- Must complete in <100ms each
+- Use mocking to avoid I/O operations
+- Run in parallel without conflicts
+
+**Integration Tests**:
+- Should complete in <10s each
+- Use temporary resources that clean up automatically
+- May run sequentially if needed for resource sharing
+
+### Test Quality Checklist
+
+Before committing tests, verify:
+
+- [ ] **Unit tests mock all external dependencies**
+- [ ] **Integration tests use real systems with proper isolation**
+- [ ] **XDG environment variables are used for integration tests**
+- [ ] **Temporary resources are properly cleaned up**
+- [ ] **Test names clearly describe what is being tested**
+- [ ] **Tests are deterministic and don't depend on external state**
+- [ ] **Error cases are tested alongside success cases**
+
 ## Enforcement
 
 This style guide is enforced through:

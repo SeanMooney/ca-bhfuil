@@ -2,7 +2,6 @@
 
 import pathlib
 import tempfile
-from unittest import mock
 
 import pytest
 
@@ -77,27 +76,31 @@ class TestRepoAddSyncWorkflow:
                 await db_manager.close()
 
     @pytest.mark.asyncio
-    async def test_sync_works_after_repo_add(self):
+    async def test_sync_works_after_repo_add(self, integration_test_environment):
         """Test that sync command works after repo add (regression test)."""
-        # Create completely isolated test environment
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = pathlib.Path(tmp_dir)
-            config_dir = tmp_path / "config"
-            config_dir.mkdir()
-            db_path = tmp_path / "test.db"
-            repo_path = tmp_path / "repos" / "test-repo"
-            repo_path.mkdir(parents=True)
+        env = integration_test_environment()
 
-            # Create fake .git directory
-            git_dir = repo_path / ".git"
-            git_dir.mkdir()
+        with env["xdg_context"] as xdg_dirs:
+            test_repo = env["test_repo"]
 
-            # Initialize database
+            # Create repository config using file:// protocol
+            repo_config = config.RepositoryConfig(
+                name="test-repo",
+                source={
+                    "url": f"file://{test_repo.path}",
+                    "type": "git",
+                },
+            )
+
+            # Initialize database in XDG state directory
+            db_path = xdg_dirs["state"] / "test.db"
             db_manager = sqlmodel_manager.SQLModelDatabaseManager(db_path)
             await db_manager.initialize()
 
-            # Initialize config manager
-            config_manager = async_config.AsyncConfigManager(config_dir)
+            # Initialize config manager with XDG config directory
+            config_manager = async_config.AsyncConfigManager(
+                xdg_dirs["config"] / "ca-bhfuil"
+            )
             await config_manager.generate_default_config()
 
             # Initialize components
@@ -110,39 +113,30 @@ class TestRepoAddSyncWorkflow:
             )
 
             try:
-                # Create repository config
-                repo_config = config.RepositoryConfig(
-                    name="test-repo",
-                    source={
-                        "url": "https://github.com/test/repo.git",
-                        "type": "git",
-                        "path": str(repo_path),
-                    },
-                )
-
                 # Simulate repo add command: add to config and register in database
                 current_config = await config_manager.load_configuration()
                 current_config.repos.append(repo_config)
                 await config_manager.save_configuration(current_config)
                 await repo_registry.register_repository(repo_config)
 
-                # Mock the sync operation
-                with (
-                    mock.patch.object(
-                        synchronizer.git_manager,
-                        "run_in_executor",
-                        return_value={"success": True, "commits_after": 10},
-                    ),
-                    mock.patch.object(
-                        synchronizer,
-                        "_update_registry_after_sync",
-                    ),
-                ):
-                    # This should not fail with "Repository not found in database"
-                    result = await synchronizer.sync_repository("test-repo")
+                # First we need to clone the repository to the expected location
+                # This simulates what the real clone command would do
+                repo_path = repo_config.repo_path
+                repo_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Clone from source to target using pygit2
+                import pygit2
+
+                pygit2.clone_repository(str(test_repo.path), str(repo_path), bare=True)
+
+                # Now test the sync operation (should work without mocking)
+                result = await synchronizer.sync_repository("test-repo")
 
                 assert result.success is True
                 assert result.error is None
+                assert result.result is not None
+                assert "commits_after" in result.result
+                assert result.result["commits_after"] == 2  # We created 2 commits
 
             finally:
                 # Cleanup
