@@ -192,10 +192,10 @@ async def test_database_context(
 @pytest.fixture
 async def temp_alembic_database():
     """Pytest fixture for temporary alembic database.
-    
+
     Creates a temporary database with alembic migrations applied,
     automatically cleaning up after the test.
-    
+
     Returns:
         Path to the temporary database file
     """
@@ -206,13 +206,13 @@ async def temp_alembic_database():
 @pytest.fixture
 async def persistent_alembic_database(tmp_path):
     """Pytest fixture for persistent alembic database in temp directory.
-    
+
     Creates a database in the pytest temp directory with alembic migrations applied.
     Database is automatically cleaned up by pytest's tmp_path fixture.
-    
+
     Args:
         tmp_path: Pytest temporary directory fixture
-        
+
     Returns:
         Path to the database file
     """
@@ -224,10 +224,10 @@ async def persistent_alembic_database(tmp_path):
 @pytest.fixture
 async def verified_alembic_database():
     """Pytest fixture for verified alembic database.
-    
+
     Creates a temporary database and verifies the schema matches
     the current alembic migrations.
-    
+
     Returns:
         Path to the verified database file
     """

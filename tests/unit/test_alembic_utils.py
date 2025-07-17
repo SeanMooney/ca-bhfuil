@@ -19,7 +19,9 @@ class TestAlembicCommand:
             # Mock successful process
             mock_process = mock.Mock()
             mock_process.returncode = 0
-            mock_process.communicate = mock.AsyncMock(return_value=(b"success output", b""))
+            mock_process.communicate = mock.AsyncMock(
+                return_value=(b"success output", b"")
+            )
             mock_subprocess.return_value = mock_process
 
             return_code, stdout, stderr = await alembic.run_alembic_command("current")
@@ -36,7 +38,9 @@ class TestAlembicCommand:
             # Mock failed process
             mock_process = mock.Mock()
             mock_process.returncode = 1
-            mock_process.communicate = mock.AsyncMock(return_value=(b"", b"error output"))
+            mock_process.communicate = mock.AsyncMock(
+                return_value=(b"", b"error output")
+            )
             mock_subprocess.return_value = mock_process
 
             return_code, stdout, stderr = await alembic.run_alembic_command("invalid")
@@ -74,7 +78,9 @@ class TestAlembicCommand:
                     with mock.patch("pathlib.Path.exists", return_value=True):
                         mock_process = mock.Mock()
                         mock_process.returncode = 0
-                        mock_process.communicate = mock.AsyncMock(return_value=(b"", b""))
+                        mock_process.communicate = mock.AsyncMock(
+                            return_value=(b"", b"")
+                        )
                         mock_subprocess.return_value = mock_process
 
                         await alembic.run_alembic_command("current")
@@ -94,7 +100,9 @@ class TestDatabaseCreation:
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = pathlib.Path(tmp_dir) / "test.db"
 
-            with mock.patch("tests.fixtures.alembic.run_alembic_command") as mock_alembic:
+            with mock.patch(
+                "tests.fixtures.alembic.run_alembic_command"
+            ) as mock_alembic:
                 mock_alembic.return_value = (0, "success", "")
 
                 result_path = await alembic.create_test_database(db_path)
@@ -108,10 +116,14 @@ class TestDatabaseCreation:
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = pathlib.Path(tmp_dir) / "test.db"
 
-            with mock.patch("tests.fixtures.alembic.run_alembic_command") as mock_alembic:
+            with mock.patch(
+                "tests.fixtures.alembic.run_alembic_command"
+            ) as mock_alembic:
                 mock_alembic.return_value = (1, "", "migration failed")
 
-                with pytest.raises(RuntimeError, match="Failed to create test database"):
+                with pytest.raises(
+                    RuntimeError, match="Failed to create test database"
+                ):
                     await alembic.create_test_database(db_path)
 
     @pytest.mark.asyncio
@@ -136,7 +148,9 @@ class TestDatabaseCreation:
             db_path = pathlib.Path(tmp_dir) / "test.db"
             db_path.touch()  # Create file
 
-            with mock.patch("tests.fixtures.alembic.create_test_database") as mock_create:
+            with mock.patch(
+                "tests.fixtures.alembic.create_test_database"
+            ) as mock_create:
                 mock_create.return_value = db_path
 
                 await alembic.reset_test_database(db_path)
@@ -153,12 +167,14 @@ class TestDatabaseVerification:
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = pathlib.Path(tmp_dir) / "test.db"
 
-            with mock.patch("tests.fixtures.alembic.run_alembic_command") as mock_alembic:
+            with mock.patch(
+                "tests.fixtures.alembic.run_alembic_command"
+            ) as mock_alembic:
                 # Mock successful verification
                 mock_alembic.side_effect = [
                     (0, "current_revision", ""),  # current command
-                    (0, "head_revision", ""),     # heads command
-                    (0, "head_revision", ""),     # current command again
+                    (0, "head_revision", ""),  # heads command
+                    (0, "head_revision", ""),  # current command again
                 ]
 
                 result = await alembic.verify_database_schema(db_path)
@@ -172,7 +188,9 @@ class TestDatabaseVerification:
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = pathlib.Path(tmp_dir) / "test.db"
 
-            with mock.patch("tests.fixtures.alembic.run_alembic_command") as mock_alembic:
+            with mock.patch(
+                "tests.fixtures.alembic.run_alembic_command"
+            ) as mock_alembic:
                 # Mock failed verification
                 mock_alembic.return_value = (1, "", "error")
 
@@ -186,11 +204,13 @@ class TestDatabaseVerification:
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = pathlib.Path(tmp_dir) / "test.db"
 
-            with mock.patch("tests.fixtures.alembic.run_alembic_command") as mock_alembic:
+            with mock.patch(
+                "tests.fixtures.alembic.run_alembic_command"
+            ) as mock_alembic:
                 # Mock schema mismatch
                 mock_alembic.side_effect = [
-                    (0, "current_revision", ""),    # current command
-                    (0, "head_revision", ""),       # heads command
+                    (0, "current_revision", ""),  # current command
+                    (0, "head_revision", ""),  # heads command
                     (0, "different_revision", ""),  # current command again
                 ]
 
