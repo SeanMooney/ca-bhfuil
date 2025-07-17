@@ -1,7 +1,6 @@
 """Main CLI application for ca-bhfuil."""
 
 import asyncio
-import contextlib
 import json
 import pathlib
 import shutil
@@ -22,11 +21,11 @@ from ca_bhfuil.cli.async_bridge import run_async
 from ca_bhfuil.cli.async_bridge import with_progress
 from ca_bhfuil.core import async_config
 from ca_bhfuil.core import async_registry
-from ca_bhfuil.core import async_repository
 from ca_bhfuil.core import async_sync
 from ca_bhfuil.core import config
 from ca_bhfuil.core.git import async_git
 from ca_bhfuil.core.git import clone
+from ca_bhfuil.core.managers import factory as manager_factory
 from ca_bhfuil.core.models import commit as commit_models
 
 
@@ -387,11 +386,9 @@ async def search(
     query = " ".join(query_words)
 
     try:
-        # Initialize repository manager and config manager
-        repo_manager = async_repository.AsyncRepositoryManager()
-        config_manager = async_config.AsyncConfigManager()
+        # Get repository path from configuration or use current directory
+        config_manager = await async_config.get_async_config_manager()
 
-        # Determine the repository path
         if repo_name:
             # Look up repository configuration by name
             repo_config = await config_manager.get_repository_config_by_name(repo_name)
@@ -415,28 +412,11 @@ async def search(
             if verbose:
                 rich_console.print(f"📁 Using current directory: {repo_path}")
 
-        # Detect/validate the repository
-        detect_result = await with_progress(
-            repo_manager.detect_repository(repo_path),
-            f"Detecting git repository at {repo_path}...",
+        # Use manager factory to get repository manager
+        repo_manager = await with_progress(
+            manager_factory.get_repository_manager(repo_path),
+            f"Initializing repository manager for {repo_path}...",
         )
-
-        if not detect_result.success:
-            if repo_name:
-                rich_console.print(
-                    f"[red]❌ Repository '{repo_name}' not found at {repo_path}[/red]"
-                )
-                rich_console.print(
-                    "💡 The repository may not be cloned yet. Use 'ca-bhfuil repo clone' first"
-                )
-            else:
-                rich_console.print(f"[red]❌ {detect_result.error}[/red]")
-                rich_console.print(
-                    "💡 Make sure you're in a git repository or use --repo to specify a repository name"
-                )
-            raise typer.Exit(1)
-
-        detected_repo_path = pathlib.Path(detect_result.result["repository_path"])
 
         # Determine if this looks like a SHA or a pattern
         is_sha_like = (
@@ -446,26 +426,40 @@ async def search(
         )
 
         if is_sha_like:
-            # Try SHA lookup first
+            # Try direct commit lookup first for SHA-like queries
             rich_console.print(f"🔍 Looking up commit: {query}")
-            lookup_result = await with_progress(
-                repo_manager.lookup_commit(detected_repo_path, query),
-                f"Searching for commit {query}...",
-            )
+            try:
+                # Load commits and search for exact SHA match
+                commits = await with_progress(
+                    repo_manager.load_commits(from_cache=True, limit=1000),
+                    "Loading commits...",
+                )
 
-            if lookup_result.success:
-                commit = lookup_result.result
-                _display_commit_details(commit, verbose)
-                return
-            rich_console.print(
-                f"[yellow]⚠️  No exact SHA match found for '{query}'[/yellow]"
-            )
-            # Fall through to pattern search
+                # Find exact SHA matches
+                exact_match = None
+                for commit in commits:
+                    if commit.sha.startswith(
+                        query.lower()
+                    ) or commit.short_sha.startswith(query.lower()):
+                        exact_match = commit
+                        break
 
-        # Pattern search in commit messages
+                if exact_match:
+                    _display_commit_details(exact_match, verbose)
+                    return
+
+                rich_console.print(
+                    f"[yellow]⚠️  No exact SHA match found for '{query}'[/yellow]"
+                )
+                # Fall through to pattern search
+            except Exception as e:
+                rich_console.print(f"[yellow]⚠️  SHA lookup failed: {e}[/yellow]")
+                # Fall through to pattern search
+
+        # Pattern search in commit messages using manager
         rich_console.print(f"🔍 Searching commit messages for: '{query}'")
         search_result = await with_progress(
-            repo_manager.search_commits(detected_repo_path, query, max_results),
+            repo_manager.search_commits(query, limit=max_results),
             "Searching commit messages...",
         )
 
@@ -473,18 +467,24 @@ async def search(
             rich_console.print(f"[red]❌ Search failed: {search_result.error}[/red]")
             raise typer.Exit(1)
 
-        matches = search_result.matches
+        commits = search_result.commits
 
-        if not matches:
+        if not commits:
             rich_console.print(f"[yellow]No commits found matching '{query}'[/yellow]")
             return
 
-        # Display results
-        _display_search_results(matches, query, verbose)
+        # Display results using the existing display function
+        _display_search_results(commits, query, verbose)
 
-        if len(matches) == max_results:
+        if len(commits) == max_results:
             rich_console.print(
                 f"[yellow]💡 Showing first {max_results} results. Use --max to see more.[/yellow]"
+            )
+
+        # Display search metadata
+        if verbose and search_result.total_count > len(commits):
+            rich_console.print(
+                f"📊 Showing {len(commits)} of {search_result.total_count} total matches"
             )
 
     except Exception as e:
@@ -492,9 +492,6 @@ async def search(
         if verbose:
             rich_console.print(f"[red]{traceback.format_exc()}[/red]")
         raise typer.Exit(1) from e
-    finally:
-        with contextlib.suppress(Exception):
-            repo_manager.shutdown()
 
 
 def _display_commit_details(
@@ -575,8 +572,6 @@ async def status(
     ),
 ) -> None:
     """Show repository analysis status."""
-    # TODO: Use verbose parameter when implementing status functionality
-    del verbose
     repo_path = repo_path or pathlib.Path.cwd()
 
     # Show XDG directory status
@@ -621,6 +616,110 @@ async def status(
 
     except Exception as e:
         rich_console.print(f"[red]⚠️  Configuration issue: {e}[/red]")
+
+    # Show repository analysis if a valid git repository is found
+    try:
+        repo_manager = await with_progress(
+            manager_factory.get_repository_manager(repo_path),
+            f"Initializing repository manager for {repo_path}...",
+        )
+
+        # Analyze the repository
+        analysis_result = await with_progress(
+            repo_manager.analyze_repository(),
+            f"Analyzing repository at {repo_path}...",
+        )
+
+        if analysis_result.success:
+            rich_console.print()  # Add spacing
+
+            # Create repository analysis table
+            repo_table = table.Table(title=f"Repository Analysis: {repo_path.name}")
+            repo_table.add_column("Metric", style="cyan")
+            repo_table.add_column("Value", style="green")
+
+            repo_table.add_row("Repository Path", str(repo_path))
+            repo_table.add_row("Commit Count", str(analysis_result.commit_count))
+            repo_table.add_row("Branch Count", str(analysis_result.branch_count))
+            repo_table.add_row("Authors", str(len(analysis_result.authors)))
+            repo_table.add_row(
+                "High Impact Commits", str(len(analysis_result.high_impact_commits))
+            )
+
+            if analysis_result.date_range:
+                repo_table.add_row(
+                    "Date Range",
+                    f"{analysis_result.date_range.get('earliest', 'N/A')} to {analysis_result.date_range.get('latest', 'N/A')}",
+                )
+
+            rich_console.print(repo_table)
+
+            # Show recent commits if verbose
+            if verbose and analysis_result.recent_commits:
+                rich_console.print()
+                recent_table = table.Table(title="Recent Commits")
+                recent_table.add_column("SHA", style="yellow", width=10)
+                recent_table.add_column("Author", style="cyan", width=20)
+                recent_table.add_column("Date", style="blue", width=12)
+                recent_table.add_column("Message", style="green")
+
+                for commit in analysis_result.recent_commits[:5]:  # Show first 5
+                    message = commit.message.split("\n")[0]  # First line only
+                    if len(message) > 50:
+                        message = message[:47] + "..."
+
+                    author_str = commit.author_name
+                    if len(author_str) > 18:
+                        author_str = author_str[:15] + "..."
+
+                    recent_table.add_row(
+                        commit.short_sha,
+                        author_str,
+                        commit.author_date.strftime("%Y-%m-%d"),
+                        message,
+                    )
+
+                rich_console.print(recent_table)
+
+            # Show high-impact commits if any and verbose
+            if verbose and analysis_result.high_impact_commits:
+                rich_console.print()
+                impact_table = table.Table(title="High Impact Commits")
+                impact_table.add_column("SHA", style="yellow", width=10)
+                impact_table.add_column("Score", style="red", width=8)
+                impact_table.add_column("Author", style="cyan", width=20)
+                impact_table.add_column("Message", style="green")
+
+                for commit in analysis_result.high_impact_commits[:5]:  # Show first 5
+                    message = commit.message.split("\n")[0]  # First line only
+                    if len(message) > 40:
+                        message = message[:37] + "..."
+
+                    author_str = commit.author_name
+                    if len(author_str) > 18:
+                        author_str = author_str[:15] + "..."
+
+                    impact_table.add_row(
+                        commit.short_sha,
+                        f"{commit.calculate_impact_score():.2f}",
+                        author_str,
+                        message,
+                    )
+
+                rich_console.print(impact_table)
+
+        else:
+            rich_console.print(
+                f"[yellow]⚠️  Repository analysis not available: {analysis_result.error}[/yellow]"
+            )
+
+    except Exception as e:
+        if verbose:
+            rich_console.print(f"[yellow]⚠️  Repository analysis failed: {e}[/yellow]")
+        else:
+            rich_console.print(
+                "[yellow]⚠️  No repository found in current directory[/yellow]"
+            )
 
 
 @repo_app.command("add")
