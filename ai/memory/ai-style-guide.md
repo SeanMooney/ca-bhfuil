@@ -2,7 +2,7 @@
 
 > **Condensed style guide for AI assistants working on Ca-Bhfuil**
 >
-> **Last Updated**: 2025-01-23 (Sync with docs/contributor/code-style.md - added explicit import preference)
+> **Last Updated**: 2025-07-17 (Added context manager patterns - avoid nested with statements)
 >
 > **CRITICAL**: This file must stay synchronized with `docs/contributor/code-style.md`. When the full guide changes, update this AI-optimized version immediately.
 
@@ -136,6 +136,27 @@ def read_config_file(path: pathlib.Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 ```
+
+### Context Manager Patterns (CRITICAL)
+```python
+# CORRECT: Use parenthesized context managers for multiple contexts
+with (
+    mock.patch("module.function") as mock_func,
+    mock.patch("module.class") as mock_class,
+    mock.patch("pathlib.Path.exists", return_value=True),
+):
+    # Test code here
+    pass
+
+# WRONG: Nested with statements (ruff SIM117 violation)
+with mock.patch("module.function") as mock_func:
+    with mock.patch("module.class") as mock_class:
+        with mock.patch("pathlib.Path.exists", return_value=True):
+            # Test code here
+            pass
+```
+
+**Rule**: Always use parenthesized context managers for multiple contexts. This is enforced by ruff and has been a recurring issue.
 
 ## Testing Philosophy
 
@@ -464,6 +485,22 @@ def clone_repository(
     force: bool = False,
 ) -> CloneResult:
     """Clone repository with specific options."""
+    pass
+
+# AVOID - Nested with statements (ruff SIM117 violation)
+with mock.patch("module.function") as mock_func:
+    with mock.patch("module.class") as mock_class:
+        with mock.patch("pathlib.Path.exists", return_value=True):
+            # Test code here
+            pass
+
+# GOOD - Use parenthesized context managers
+with (
+    mock.patch("module.function") as mock_func,
+    mock.patch("module.class") as mock_class,
+    mock.patch("pathlib.Path.exists", return_value=True),
+):
+    # Test code here
     pass
 ```
 
