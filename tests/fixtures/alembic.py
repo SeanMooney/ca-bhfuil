@@ -1,6 +1,7 @@
-"""Alembic utilities for testing database schema creation."""
+"""Alembic testing fixtures for ca-bhfuil."""
 
 import asyncio
+from contextlib import asynccontextmanager
 import os
 import pathlib
 import subprocess
@@ -9,6 +10,7 @@ import tempfile
 import typing
 
 from loguru import logger
+import pytest
 
 
 async def run_alembic_command(
@@ -36,7 +38,6 @@ async def run_alembic_command(
     logger.debug(f"Running alembic command: {full_command}")
 
     # Get the current environment and add the .venv/bin path
-
     current_env = os.environ.copy()
     if env:
         current_env.update(env)
@@ -120,42 +121,6 @@ async def reset_test_database(db_path: pathlib.Path) -> None:
     logger.info(f"Test database reset at {db_path}")
 
 
-class TestDatabaseManager:
-    """Context manager for test databases with automatic cleanup."""
-
-    def __init__(self, db_path: pathlib.Path | None = None, cleanup: bool = True):
-        """Initialize test database manager.
-
-        Args:
-            db_path: Optional specific database path. If None, creates temporary database.
-            cleanup: Whether to clean up the database on exit
-        """
-        self.db_path = db_path
-        self.cleanup = cleanup
-        self._created_temp_db = db_path is None
-
-    async def __aenter__(self) -> pathlib.Path:
-        """Create and return test database path."""
-        self.db_path = await create_test_database(self.db_path)
-        return self.db_path
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: typing.Any | None,
-    ) -> None:
-        """Clean up test database if requested."""
-        if self.cleanup and self.db_path and self.db_path.exists():
-            if self._created_temp_db:
-                # Remove temporary database file
-                self.db_path.unlink()
-                logger.debug(f"Cleaned up temporary test database: {self.db_path}")
-            else:
-                # Reset user-specified database
-                await reset_test_database(self.db_path)
-
-
 async def verify_database_schema(db_path: pathlib.Path) -> bool:
     """Verify that the database schema matches alembic migrations.
 
@@ -193,3 +158,81 @@ async def verify_database_schema(db_path: pathlib.Path) -> bool:
         )
 
     return is_current
+
+
+@asynccontextmanager
+async def test_database_context(
+    db_path: pathlib.Path | None = None, cleanup: bool = True
+) -> typing.AsyncGenerator[pathlib.Path, None]:
+    """Context manager for test databases with automatic cleanup.
+
+    Args:
+        db_path: Optional specific database path. If None, creates temporary database.
+        cleanup: Whether to clean up the database on exit
+
+    Yields:
+        Path to the test database
+    """
+    created_temp_db = db_path is None
+
+    try:
+        db_path = await create_test_database(db_path)
+        yield db_path
+    finally:
+        if cleanup and db_path and db_path.exists():
+            if created_temp_db:
+                # Remove temporary database file
+                db_path.unlink()
+                logger.debug(f"Cleaned up temporary test database: {db_path}")
+            else:
+                # Reset user-specified database
+                await reset_test_database(db_path)
+
+
+@pytest.fixture
+async def temp_alembic_database():
+    """Pytest fixture for temporary alembic database.
+    
+    Creates a temporary database with alembic migrations applied,
+    automatically cleaning up after the test.
+    
+    Returns:
+        Path to the temporary database file
+    """
+    async with test_database_context() as db_path:
+        yield db_path
+
+
+@pytest.fixture
+async def persistent_alembic_database(tmp_path):
+    """Pytest fixture for persistent alembic database in temp directory.
+    
+    Creates a database in the pytest temp directory with alembic migrations applied.
+    Database is automatically cleaned up by pytest's tmp_path fixture.
+    
+    Args:
+        tmp_path: Pytest temporary directory fixture
+        
+    Returns:
+        Path to the database file
+    """
+    db_path = tmp_path / "test.db"
+    async with test_database_context(db_path, cleanup=False) as db_path:
+        yield db_path
+
+
+@pytest.fixture
+async def verified_alembic_database():
+    """Pytest fixture for verified alembic database.
+    
+    Creates a temporary database and verifies the schema matches
+    the current alembic migrations.
+    
+    Returns:
+        Path to the verified database file
+    """
+    async with test_database_context() as db_path:
+        is_current = await verify_database_schema(db_path)
+        if not is_current:
+            raise RuntimeError("Database schema verification failed")
+        yield db_path

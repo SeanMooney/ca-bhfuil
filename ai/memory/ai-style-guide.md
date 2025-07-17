@@ -8,6 +8,14 @@
 
 ## Core Rules
 
+### Testing Organization (CRITICAL)
+- **Tests MUST be in `tests/` directory, NEVER in `src/`**
+- **NO testing utilities in production code** - use proper production interfaces
+- **Unit tests**: `tests/unit/`
+- **Integration tests**: `tests/integration/`
+- **Test fixtures**: `tests/fixtures/`
+- **Anti-pattern**: `src/ca_bhfuil/testing/` or similar testing directories in `src/`
+
 ### Formatting (Handled by Ruff)
 - **Line length**: 88 characters max
 - **Indentation**: 4 spaces, never tabs
@@ -468,6 +476,24 @@ from typing import List, Dict, Optional  # Legacy
 # Good  
 from module import specific_item
 # Use built-in types directly
+```
+
+### Testing Organization Issues (CRITICAL)
+```python
+# WRONG - Tests in src/ directory
+src/ca_bhfuil/testing/test_utils.py
+src/ca_bhfuil/testing/alembic_utils.py
+
+# WRONG - Production code importing from testing
+from ca_bhfuil.testing import alembic_utils  # In production code
+
+# CORRECT - Tests in tests/ directory
+tests/unit/test_alembic_utils.py
+tests/fixtures/alembic.py
+tests/integration/test_integration_flow.py
+
+# CORRECT - Production code using production interfaces
+from ca_bhfuil.storage import alembic_interface  # In production code
 ```
 
 ## Ruff Auto-Fixes
