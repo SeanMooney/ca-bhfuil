@@ -96,15 +96,17 @@ This plan implements the Manager + Rich Models architecture from `docs/contribut
 - [x] Manager registry for dependency injection  
 - [x] Transaction management for multi-step operations
 
-#### 2.3 Manager Integration
-- [ ] Update existing code to use managers instead of direct database access
-- [ ] Ensure backward compatibility during transition
-- [ ] Add integration tests for manager orchestration
+#### 2.3 Manager Integration ✅ COMPLETED
+- [x] Update existing code to use managers instead of direct database access
+- [x] Ensure backward compatibility during transition
+- [x] Add integration tests for manager orchestration
 
 **Success Criteria**:
 - ✅ Managers provide clean API for business operations
 - ✅ All database operations go through manager layer
 - ✅ Performance is maintained or improved
+- ✅ ManagerFactory provides centralized dependency injection
+- ✅ Backward compatibility maintained during transition
 
 ### Phase 3: Integration & Testing
 
@@ -344,6 +346,29 @@ Before any commit:
 - `tests/unit/test_base_manager.py` - Comprehensive test suite (18 tests)
 - `src/ca_bhfuil/core/managers/repository.py` - Refactored to use BaseManager
 **Next**: Phase 2.3 - Update existing code to use managers
+
+### Session 4 - 2025-07-18 ✅ COMPLETED
+**Completed**: Phase 2.3 - Manager integration infrastructure
+**Achievements**:
+- ✅ Enhanced BaseManager with SQLModelDatabaseManager integration
+- ✅ Replace direct database engine access with proper manager patterns
+- ✅ Database manager injection alongside session injection
+- ✅ Proper resource ownership tracking for both sessions and managers
+- ✅ Enhanced ManagerRegistry with shared database manager support
+- ✅ ManagerFactory for centralized manager creation and dependency injection
+- ✅ Global factory convenience functions for easy integration
+- ✅ Async context manager support for proper resource cleanup
+- ✅ Comprehensive test suite: 19 BaseManager + 14 RepositoryManager + 11 Factory tests
+- ✅ All quality gates passing (ruff, mypy, pytest)
+**Branch**: `feature/data-model-architecture`
+**Commit**: `f29e60c` - feat(data-model): Implement Phase 2.3 - Manager Integration Infrastructure
+**Files Created/Modified**:
+- `src/ca_bhfuil/core/managers/base.py` - Enhanced with database manager integration
+- `src/ca_bhfuil/core/managers/repository.py` - Updated to accept database manager
+- `src/ca_bhfuil/core/managers/factory.py` - Complete ManagerFactory implementation
+- `tests/unit/test_base_manager.py` - Enhanced with database manager tests
+- `tests/unit/test_manager_factory.py` - Comprehensive factory test suite (11 tests)
+**Next**: Phase 3 - CLI integration and comprehensive testing
 
 ---
 
