@@ -8,7 +8,7 @@ from loguru import logger
 import sqlalchemy.ext.asyncio
 
 from ca_bhfuil.core.models import results as result_models
-from ca_bhfuil.storage.database import engine as db_engine
+from ca_bhfuil.storage import sqlmodel_manager
 from ca_bhfuil.storage.database import repository as db_repository
 
 
@@ -29,27 +29,36 @@ class BaseManager:
     def __init__(
         self,
         db_session: sqlalchemy.ext.asyncio.AsyncSession | None = None,
+        db_manager: sqlmodel_manager.SQLModelDatabaseManager | None = None,
     ):
         """Initialize base manager.
 
         Args:
             db_session: Optional database session (creates new if None)
+            db_manager: Optional database manager (creates new if None)
         """
         self._db_session = db_session
+        self._db_manager = db_manager
         self._db_repository: db_repository.DatabaseRepository | None = None
         self._session_owned = db_session is None
+        self._manager_owned = db_manager is None
 
     async def _get_db_repository(self) -> db_repository.DatabaseRepository:
         """Get database repository, creating session if needed."""
         if self._db_repository is None:
             if self._db_session is None:
-                # Create a new database session
-                database_engine = db_engine.get_database_engine()
-                self._db_session = sqlalchemy.ext.asyncio.AsyncSession(
-                    database_engine.engine
-                )
+                # Create session through database manager
+                db_manager = await self._get_db_manager()
+                self._db_session = await db_manager.engine.get_session().__aenter__()
             self._db_repository = db_repository.DatabaseRepository(self._db_session)
         return self._db_repository
+
+    async def _get_db_manager(self) -> sqlmodel_manager.SQLModelDatabaseManager:
+        """Get database manager, creating if needed."""
+        if self._db_manager is None:
+            self._db_manager = sqlmodel_manager.SQLModelDatabaseManager()
+            await self._db_manager.initialize()
+        return self._db_manager
 
     @contextlib.asynccontextmanager
     async def _operation_context(
@@ -154,10 +163,8 @@ class BaseManager:
             Database session ready for transaction
         """
         if self._db_session is None:
-            database_engine = db_engine.get_database_engine()
-            self._db_session = sqlalchemy.ext.asyncio.AsyncSession(
-                database_engine.engine
-            )
+            db_manager = await self._get_db_manager()
+            self._db_session = await db_manager.engine.get_session().__aenter__()
         return self._db_session
 
     async def close(self) -> None:
@@ -167,6 +174,10 @@ class BaseManager:
             self._db_session = None
             self._db_repository = None
 
+        if self._manager_owned and self._db_manager:
+            await self._db_manager.close()
+            self._db_manager = None
+
 
 class ManagerRegistry:
     """Registry for managing dependencies between managers."""
@@ -175,6 +186,7 @@ class ManagerRegistry:
         """Initialize empty manager registry."""
         self._managers: dict[type, typing.Any] = {}
         self._db_session: sqlalchemy.ext.asyncio.AsyncSession | None = None
+        self._db_manager: sqlmodel_manager.SQLModelDatabaseManager | None = None
 
     def register(self, manager_type: type, manager_instance: typing.Any) -> None:
         """Register a manager instance.
@@ -202,6 +214,22 @@ class ManagerRegistry:
             raise KeyError(f"Manager type {manager_type.__name__} not registered")
         return typing.cast("T", self._managers[manager_type])
 
+    async def set_shared_database_manager(
+        self, db_manager: sqlmodel_manager.SQLModelDatabaseManager
+    ) -> None:
+        """Set a shared database manager for all managers.
+
+        Args:
+            db_manager: Database manager to share across managers
+        """
+        self._db_manager = db_manager
+
+        # Update existing managers
+        for manager in self._managers.values():
+            if hasattr(manager, "_db_manager"):
+                manager._db_manager = db_manager
+                manager._db_repository = None  # Force recreation with new manager
+
     async def set_shared_session(
         self, session: sqlalchemy.ext.asyncio.AsyncSession
     ) -> None:
@@ -226,6 +254,9 @@ class ManagerRegistry:
 
         if self._db_session:
             await self._db_session.close()
+
+        if self._db_manager:
+            await self._db_manager.close()
 
         self._managers.clear()
         logger.debug("Closed all managers and cleared registry")

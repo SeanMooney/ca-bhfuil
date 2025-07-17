@@ -1,6 +1,7 @@
 """Repository manager for orchestrating git operations and database persistence."""
 
 import pathlib
+import typing
 
 from loguru import logger
 import sqlalchemy.ext.asyncio
@@ -40,14 +41,18 @@ class RepositoryManager(base_manager.BaseManager):
         self,
         repository_path: pathlib.Path | str,
         db_session: sqlalchemy.ext.asyncio.AsyncSession | None = None,
+        db_manager: typing.Any = None,
     ):
         """Initialize repository manager.
 
         Args:
             repository_path: Path to the git repository
             db_session: Optional database session (creates new if None)
+            db_manager: Optional database manager (creates new if None)
         """
-        super().__init__(db_session)
+        # Import here to avoid circular imports
+
+        super().__init__(db_session, db_manager)
         self.repository_path = pathlib.Path(repository_path)
         self._git_repo = git_repository.Repository(self.repository_path)
 
