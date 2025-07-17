@@ -6,11 +6,10 @@ from loguru import logger
 import sqlalchemy.ext.asyncio
 
 from ca_bhfuil.core.git import repository as git_repository
+from ca_bhfuil.core.managers import base as base_manager
 from ca_bhfuil.core.models import commit as commit_models
 from ca_bhfuil.core.models import results as result_models
-from ca_bhfuil.storage.database import engine as db_engine
 from ca_bhfuil.storage.database import models as db_models
-from ca_bhfuil.storage.database import repository as db_repository
 
 
 class RepositoryAnalysisResult(result_models.OperationResult):
@@ -34,7 +33,7 @@ class CommitSearchResult(result_models.OperationResult):
     repository_path: str | None = None
 
 
-class RepositoryManager:
+class RepositoryManager(base_manager.BaseManager):
     """Manager for orchestrating repository operations between git and database layers."""
 
     def __init__(
@@ -48,22 +47,9 @@ class RepositoryManager:
             repository_path: Path to the git repository
             db_session: Optional database session (creates new if None)
         """
+        super().__init__(db_session)
         self.repository_path = pathlib.Path(repository_path)
         self._git_repo = git_repository.Repository(self.repository_path)
-        self._db_session = db_session
-        self._db_repository: db_repository.DatabaseRepository | None = None
-
-    async def _get_db_repository(self) -> db_repository.DatabaseRepository:
-        """Get database repository, creating session if needed."""
-        if self._db_repository is None:
-            if self._db_session is None:
-                # Create a new database session
-                database_engine = db_engine.get_database_engine()
-                self._db_session = sqlalchemy.ext.asyncio.AsyncSession(
-                    database_engine.engine
-                )
-            self._db_repository = db_repository.DatabaseRepository(self._db_session)
-        return self._db_repository
 
     async def load_commits(
         self, from_cache: bool = True, limit: int = 100
@@ -117,39 +103,41 @@ class RepositoryManager:
         Returns:
             CommitSearchResult with matched commits and metadata
         """
-        try:
-            # Get all commits (from cache if available)
-            all_commits = await self.load_commits(from_cache=True, limit=1000)
+        async with self._operation_context(
+            f"search commits with pattern '{pattern}'"
+        ) as (start_time, db_repo):
+            try:
+                # Get all commits (from cache if available)
+                all_commits = await self.load_commits(from_cache=True, limit=1000)
 
-            # Filter commits using business logic
-            matching_commits = [
-                commit for commit in all_commits if commit.matches_pattern(pattern)
-            ]
+                # Filter commits using business logic
+                matching_commits = [
+                    commit for commit in all_commits if commit.matches_pattern(pattern)
+                ]
 
-            # Sort by impact score (highest first) and limit results
-            matching_commits.sort(
-                key=lambda c: c.calculate_impact_score(), reverse=True
-            )
-            limited_commits = matching_commits[:limit]
+                # Sort by impact score (highest first) and limit results
+                matching_commits.sort(
+                    key=lambda c: c.calculate_impact_score(), reverse=True
+                )
+                limited_commits = matching_commits[:limit]
 
-            return CommitSearchResult(
-                success=True,
-                duration=0.0,  # Could track actual duration
-                commits=limited_commits,
-                total_count=len(matching_commits),
-                search_pattern=pattern,
-                repository_path=str(self.repository_path),
-            )
+                return self._create_success_result(
+                    CommitSearchResult,
+                    start_time,
+                    commits=limited_commits,
+                    total_count=len(matching_commits),
+                    search_pattern=pattern,
+                    repository_path=str(self.repository_path),
+                )
 
-        except Exception as e:
-            logger.error(f"Commit search failed for pattern '{pattern}': {e}")
-            return CommitSearchResult(
-                success=False,
-                duration=0.0,
-                error=str(e),
-                search_pattern=pattern,
-                repository_path=str(self.repository_path),
-            )
+            except Exception as e:
+                return self._create_error_result(
+                    CommitSearchResult,
+                    start_time,
+                    e,
+                    search_pattern=pattern,
+                    repository_path=str(self.repository_path),
+                )
 
     async def analyze_repository(self) -> RepositoryAnalysisResult:
         """Analyze repository and return business analytics.
@@ -157,58 +145,62 @@ class RepositoryManager:
         Returns:
             RepositoryAnalysisResult with comprehensive analytics
         """
-        try:
-            # Load commits for analysis
-            commits = await self.load_commits(from_cache=True, limit=1000)
+        async with self._operation_context(
+            f"analyze repository {self.repository_path}"
+        ) as (start_time, db_repo):
+            try:
+                # Load commits for analysis
+                commits = await self.load_commits(from_cache=True, limit=1000)
 
-            if not commits:
-                return RepositoryAnalysisResult(
-                    success=True,
-                    duration=0.0,
+                if not commits:
+                    return self._create_success_result(
+                        RepositoryAnalysisResult,
+                        start_time,
+                        repository_path=str(self.repository_path),
+                        commit_count=0,
+                        branch_count=0,
+                    )
+
+                # Calculate analytics
+                high_impact_commits = [
+                    commit
+                    for commit in commits
+                    if commit.calculate_impact_score() > 0.7
+                ]
+
+                # Get unique authors
+                authors = list({commit.author_name for commit in commits})
+
+                # Calculate date range
+                dates = [commit.author_date for commit in commits]
+                date_range = {
+                    "earliest": min(dates).isoformat(),
+                    "latest": max(dates).isoformat(),
+                }
+
+                # Get git statistics for branch count
+                git_stats = self._git_repo.get_repository_stats()
+                branch_count = git_stats.get("total_branches", 0)
+
+                return self._create_success_result(
+                    RepositoryAnalysisResult,
+                    start_time,
                     repository_path=str(self.repository_path),
-                    commit_count=0,
-                    branch_count=0,
+                    commit_count=len(commits),
+                    branch_count=branch_count,
+                    recent_commits=commits[:10],  # Most recent 10
+                    high_impact_commits=high_impact_commits,
+                    authors=authors,
+                    date_range=date_range,
                 )
 
-            # Calculate analytics
-            high_impact_commits = [
-                commit for commit in commits if commit.calculate_impact_score() > 0.7
-            ]
-
-            # Get unique authors
-            authors = list({commit.author_name for commit in commits})
-
-            # Calculate date range
-            dates = [commit.author_date for commit in commits]
-            date_range = {
-                "earliest": min(dates).isoformat(),
-                "latest": max(dates).isoformat(),
-            }
-
-            # Get git statistics for branch count
-            git_stats = self._git_repo.get_repository_stats()
-            branch_count = git_stats.get("total_branches", 0)
-
-            return RepositoryAnalysisResult(
-                success=True,
-                duration=0.0,  # Could track actual duration
-                repository_path=str(self.repository_path),
-                commit_count=len(commits),
-                branch_count=branch_count,
-                recent_commits=commits[:10],  # Most recent 10
-                high_impact_commits=high_impact_commits,
-                authors=authors,
-                date_range=date_range,
-            )
-
-        except Exception as e:
-            logger.error(f"Repository analysis failed for {self.repository_path}: {e}")
-            return RepositoryAnalysisResult(
-                success=False,
-                duration=0.0,
-                error=str(e),
-                repository_path=str(self.repository_path),
-            )
+            except Exception as e:
+                return self._create_error_result(
+                    RepositoryAnalysisResult,
+                    start_time,
+                    e,
+                    repository_path=str(self.repository_path),
+                )
 
     async def sync_with_database(self) -> None:
         """Synchronize repository data with database.
