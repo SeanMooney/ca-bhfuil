@@ -132,6 +132,45 @@ async def test_with_real_database():
 
 ## Anti-Patterns to Avoid
 
+### Testing Organization Anti-Patterns (CRITICAL)
+- **Tests in `src/` directory** - violates standard Python testing structure
+- **Production code importing testing utilities** - creates wrong dependencies
+- **Testing utilities in production packages** - breaks separation of concerns
+- **Mixed testing/production code** - confuses responsibilities
+
+**Examples of WRONG patterns**:
+```python
+# WRONG: Testing utilities in src/
+src/ca_bhfuil/testing/alembic_utils.py
+
+# WRONG: Production code importing testing utilities
+from ca_bhfuil.testing import alembic_utils  # In sqlmodel_manager.py
+
+# WRONG: Testing functions in production modules
+def some_production_function():
+    pass
+
+def test_helper_function():  # Should be in tests/
+    pass
+```
+
+**Examples of CORRECT patterns**:
+```python
+# CORRECT: Tests in tests/ directory
+tests/unit/test_alembic_utils.py
+tests/fixtures/alembic.py
+tests/integration/test_workflow.py
+
+# CORRECT: Production interfaces for production code
+from ca_bhfuil.storage import alembic_interface  # In production code
+
+# CORRECT: Testing utilities as fixtures
+@pytest.fixture
+def alembic_database():
+    # Testing logic here
+    pass
+```
+
 ### Import Anti-Patterns
 - **Never use `from module import *`** - pollutes namespace
 - **Never import functions/classes directly** - makes code less clear
