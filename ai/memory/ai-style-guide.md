@@ -129,7 +129,154 @@ def read_config_file(path: pathlib.Path) -> dict[str, Any]:
         return yaml.safe_load(f)
 ```
 
-## Testing Patterns
+## Testing Philosophy
+
+### Unit vs Integration Tests (CRITICAL)
+
+**Unit Tests (`tests/unit/`)**:
+- **Purpose**: Fast, isolated testing of individual components
+- **Mocking**: Heavy mocking of external dependencies is **ENCOURAGED**
+- **Scope**: Single class/function, isolated from filesystem, network, database
+- **Speed**: Must be fast (<100ms per test)
+- **Dependencies**: Mock all external systems (git, database, filesystem, network)
+
+**Integration Tests (`tests/integration/`)**:
+- **Purpose**: End-to-end testing of real system interactions
+- **Mocking**: Minimal mocking - use real systems **PREFERRED**
+- **Scope**: Multiple components working together
+- **Speed**: Can be slower (1-10s per test)
+- **Dependencies**: Use real git repositories, temporary databases, actual file operations
+
+### Test Strategy Matrix
+
+| Test Type | Git Operations | Database | Filesystem | Network | Mocking Level |
+|-----------|---------------|----------|------------|---------|---------------|
+| Unit      | Mock git calls | Mock DB  | Mock paths | Mock HTTP | Heavy (90%+) |
+| Integration| Real git repos | Temp DB | Temp dirs | Real/Skip | Light (10%) |
+
+### Unit Test Patterns
+
+```python
+class TestGitOperations:
+    """Unit tests mock external dependencies."""
+
+    @mock.patch("pygit2.Repository")
+    def test_clone_repository(self, mock_repo):
+        """Test git clone logic without actual git operations."""
+        mock_repo.return_value = mock_repo_instance
+        # Test implementation
+        mock_repo.assert_called_once()
+
+    @mock.patch("pathlib.Path.exists", return_value=True)
+    def test_path_validation(self, mock_exists):
+        """Test path validation logic."""
+        # Test implementation
+```
+
+### Integration Test Patterns
+
+```python
+class TestRepositorySync:
+    """Integration tests use real systems with proper XDG isolation."""
+
+    @pytest.mark.asyncio
+    async def test_repo_sync_workflow(self, integration_test_environment):
+        """Test full sync workflow with real git repository."""
+        env = integration_test_environment()
+
+        with env["xdg_context"] as xdg_dirs:
+            test_repo = env["test_repo"]
+
+            # Create repository config using file:// protocol
+            repo_config = config.RepositoryConfig(
+                name="test-repo",
+                source={"url": f"file://{test_repo.path}", "type": "git"},
+            )
+
+            # Use real database in XDG state directory
+            db_manager = SQLModelDatabaseManager(xdg_dirs["state"] / "test.db")
+            await db_manager.initialize()
+
+            # Use real config manager with XDG config directory
+            config_manager = AsyncConfigManager(xdg_dirs["config"] / "ca-bhfuil")
+            await config_manager.generate_default_config()
+
+            # Test with real components
+            synchronizer = AsyncRepositorySynchronizer(config_manager, db_manager)
+            result = await synchronizer.sync_repository("test-repo")
+            assert result.success is True
+```
+
+### Environment Isolation for Integration Tests
+
+**CRITICAL**: Use proper XDG fixtures for complete isolation:
+
+```python
+# CORRECT: Use fixtures for proper XDG structure
+@pytest.fixture
+def fake_home_dir():
+    """Create fake home directory with proper XDG structure."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fake_home = pathlib.Path(tmp_dir)
+
+        # Create proper XDG directory structure
+        config_dir = fake_home / ".config"
+        cache_dir = fake_home / ".cache"
+        state_dir = fake_home / ".local" / "state"
+
+        config_dir.mkdir(parents=True)
+        cache_dir.mkdir(parents=True)
+        state_dir.mkdir(parents=True)
+
+        yield {
+            "home": fake_home,
+            "config": config_dir,
+            "cache": cache_dir,
+            "state": state_dir,
+        }
+
+@pytest.fixture
+def isolated_xdg_environment(fake_home_dir):
+    """Set up isolated XDG environment variables."""
+    @contextmanager
+    def xdg_context():
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "XDG_CONFIG_HOME": str(fake_home_dir["config"]),
+                "XDG_CACHE_HOME": str(fake_home_dir["cache"]),
+                "XDG_STATE_HOME": str(fake_home_dir["state"]),
+            },
+            clear=False,
+        ):
+            yield fake_home_dir
+    return xdg_context
+
+# Use the fixture in tests
+def test_with_isolated_environment(isolated_xdg_environment):
+    """Integration test with proper XDG isolation."""
+    with isolated_xdg_environment() as xdg_dirs:
+        # All config/cache/state operations happen in isolated XDG structure
+        config_manager = AsyncConfigManager(xdg_dirs["config"] / "ca-bhfuil")
+        # Test operations...
+```
+
+**WRONG**: Manual XDG directory setup
+```python
+# AVOID: Incorrect XDG structure
+@mock.patch.dict(
+    "os.environ",
+    {
+        "XDG_CONFIG_HOME": str(tmp_dir / "config"),  # Wrong: should be base dir
+        "XDG_CACHE_HOME": str(tmp_dir / "cache"),    # Wrong: should be base dir
+        "XDG_STATE_HOME": str(tmp_dir / "state"),    # Wrong: should be base dir
+    },
+    clear=False,
+)
+def test_with_incorrect_xdg():
+    # This creates wrong directory structure
+    pass
+```
 
 ### Test Structure
 ```python
@@ -151,7 +298,9 @@ class TestFeatureName:
             operation_that_fails()
 ```
 
-### Mocking
+### Mocking Guidelines
+
+**Unit Tests - Mock External Dependencies**:
 ```python
 @mock.patch("module.external_dependency", autospec=True)
 def test_with_mock(self, mock_dep):
@@ -159,6 +308,22 @@ def test_with_mock(self, mock_dep):
     mock_dep.return_value = expected_result
     # Test implementation
     mock_dep.assert_called_once_with(expected_args)
+```
+
+**Integration Tests - Use Real Systems**:
+```python
+def test_with_real_systems(self):
+    """Integration test with minimal mocking."""
+    # Use TestRepository fixture for real git operations
+    test_repo = TestRepository(tmp_path)
+    test_repo.commit("test commit")
+
+    # Use real database
+    db = SQLModelDatabaseManager(":memory:")
+
+    # Test actual operations
+    result = sync_repository(test_repo.path)
+    assert result.success is True
 ```
 
 ## Import Standards (CRITICAL)
@@ -399,4 +564,4 @@ When making code changes:
 
 **Key Principle**: Write code that is easy for both humans and AI to understand and maintain.
 
-**Last Updated**: 2025-06-29 - Enhanced with automation guidance, ruff auto-fix patterns, and AI assistant workflow optimizations
+**Last Updated**: 2025-07-17 - Enhanced with testing philosophy, unit vs integration test patterns, and XDG environment isolation

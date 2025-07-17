@@ -36,6 +36,11 @@ def url_to_path(url: str) -> str:
             # Remove leading slash and .git suffix
             path = parsed.path.lstrip("/").removesuffix(".git")
             return f"{parsed.netloc}/{path}"
+        if parsed.scheme == "file":
+            # Handle file:// URLs for local testing
+            # Convert file:///path/to/repo to localhost/path/to/repo
+            path = parsed.path.lstrip("/").removesuffix(".git")
+            return f"localhost/{path}"
 
     raise ValueError(f"Unsupported URL format: {url}")
 
