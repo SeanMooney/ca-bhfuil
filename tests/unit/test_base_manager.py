@@ -100,6 +100,8 @@ class TestBaseManager:
 
         assert manager._db_session is None
         assert manager._session_owned is True
+        assert manager._db_manager is None
+        assert manager._manager_owned is True
 
         await manager.close()
 
@@ -295,3 +297,21 @@ class TestManagerRegistry:
         # Should not raise error
         await registry.close_all()
         assert len(registry._managers) == 0
+
+    async def test_set_shared_database_manager(self, registry):
+        """Test setting shared database manager across managers."""
+        mock_manager = unittest.mock.MagicMock()
+        mock_manager._db_manager = None
+        mock_manager._db_repository = "old_repo"
+
+        registry.register(str, mock_manager)
+
+        # Mock database manager
+        mock_db_manager = unittest.mock.MagicMock()
+
+        # Set shared database manager
+        await registry.set_shared_database_manager(mock_db_manager)
+
+        # Manager should have new database manager
+        assert mock_manager._db_manager is mock_db_manager
+        assert mock_manager._db_repository is None  # Should be reset
