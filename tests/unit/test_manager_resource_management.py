@@ -19,9 +19,10 @@ class TestManagerResourceManagement:
         await alembic.create_test_database(db_path)
 
         async with manager_factory.ManagerFactory(db_path) as factory:
-            with tempfile.TemporaryDirectory() as temp_dir1, \
-                 tempfile.TemporaryDirectory() as temp_dir2:
-
+            with (
+                tempfile.TemporaryDirectory() as temp_dir1,
+                tempfile.TemporaryDirectory() as temp_dir2,
+            ):
                 repo_path1 = pathlib.Path(temp_dir1)
                 repo_path2 = pathlib.Path(temp_dir2)
 
@@ -42,7 +43,9 @@ class TestManagerResourceManagement:
                     assert repo_manager1 is not repo_manager2
 
                     # Verify they have different repository paths
-                    assert repo_manager1.repository_path != repo_manager2.repository_path
+                    assert (
+                        repo_manager1.repository_path != repo_manager2.repository_path
+                    )
 
                     # Verify both are registered in the registry
                     registry = await factory.get_registry()
@@ -78,10 +81,13 @@ class TestManagerResourceManagement:
                     # Verify the manager doesn't override close method
                     # (close method should come from BaseManager)
                     from ca_bhfuil.core.managers import base as base_manager
-                    assert repo_manager.__class__.close is base_manager.BaseManager.close
+
+                    assert (
+                        repo_manager.__class__.close is base_manager.BaseManager.close
+                    )
 
                     # Verify the manager still has close method from BaseManager
-                    assert hasattr(repo_manager, 'close')
+                    assert hasattr(repo_manager, "close")
 
                     # Verify calling close doesn't cause issues
                     await repo_manager.close()
@@ -111,7 +117,9 @@ class TestManagerResourceManagement:
             assert retrieved_manager is mock_manager
 
             # Test error case
-            with pytest.raises(KeyError, match="Manager key 'nonexistent' not registered"):
+            with pytest.raises(
+                KeyError, match="Manager key 'nonexistent' not registered"
+            ):
                 registry.get("nonexistent")
         finally:
             await factory.close()

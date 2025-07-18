@@ -417,4 +417,3 @@ class RepositoryManager(base_manager.BaseManager):
 
         except Exception as e:
             logger.error(f"Failed to cache commits to database: {e}")
-
