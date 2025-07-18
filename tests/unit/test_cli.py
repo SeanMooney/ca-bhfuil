@@ -212,27 +212,26 @@ class TestMainCommands:
                 "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
             ),
             mock.patch(
-                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
-            ) as mock_repo_manager_class,
+                "ca_bhfuil.core.managers.factory.get_repository_manager"
+            ) as mock_get_repo_manager,
         ):
+            # Mock the async manager and its methods
             mock_repo_manager = mock.AsyncMock()
-            mock_repo_manager_class.return_value = mock_repo_manager
-            # Make shutdown a regular mock (not async) to avoid warnings
-            mock_repo_manager.shutdown = mock.Mock(return_value=None)
-
-            # Mock the repository detection
-            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
-                success=True, result={"repository_path": str(temp_config_dir)}
+            mock_repo_manager.search_commits.return_value = mock.Mock(
+                success=True, commits=[], total_count=0
             )
 
-            # Mock the search results
-            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
-                success=True, matches=[]
-            )
+            # The factory function should return the async mock
+            mock_get_repo_manager.return_value = mock_repo_manager
 
             result = cli_runner.invoke(main.app, ["search", "test"])
+
             assert result.exit_code == 0
             assert "No commits found matching 'test'" in result.stdout
+            mock_get_repo_manager.assert_called_once()
+            mock_repo_manager.search_commits.assert_called_once_with(
+                "test", limit=mock.ANY
+            )
 
     def test_search_command_with_repo_name(self, cli_runner, temp_config_dir):
         """Test search command with repository name."""
@@ -241,42 +240,40 @@ class TestMainCommands:
                 "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
             ),
             mock.patch(
-                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
-            ) as mock_repo_manager_class,
+                "ca_bhfuil.core.managers.factory.get_repository_manager"
+            ) as mock_get_repo_manager,
             mock.patch(
-                "ca_bhfuil.core.async_config.AsyncConfigManager"
-            ) as mock_config_manager_class,
+                "ca_bhfuil.core.async_config.get_async_config_manager"
+            ) as mock_get_config_manager,
         ):
+            # Mock the repository manager
             mock_repo_manager = mock.AsyncMock()
-            mock_repo_manager_class.return_value = mock_repo_manager
-            # Make shutdown a regular mock (not async) to avoid warnings
-            mock_repo_manager.shutdown = mock.Mock(return_value=None)
+            mock_repo_manager.search_commits.return_value = mock.Mock(
+                success=True, commits=[], total_count=0
+            )
+            mock_get_repo_manager.return_value = mock_repo_manager
 
+            # Mock the configuration manager
             mock_config_manager = mock.AsyncMock()
-            mock_config_manager_class.return_value = mock_config_manager
-
-            # Mock repository config lookup
-            mock_repo_config = mock.AsyncMock()
+            mock_repo_config = mock.Mock()
             mock_repo_config.repo_path = temp_config_dir / "test-repo"
+            # Create the mock repo path
+            mock_repo_config.repo_path.mkdir()
             mock_config_manager.get_repository_config_by_name.return_value = (
                 mock_repo_config
             )
-
-            # Mock the repository detection
-            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
-                success=True, result={"repository_path": str(temp_config_dir)}
-            )
-
-            # Mock the search results
-            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
-                success=True, matches=[]
-            )
+            mock_get_config_manager.return_value = mock_config_manager
 
             result = cli_runner.invoke(
                 main.app, ["search", "test", "--repo", "test-repo"]
             )
+
             assert result.exit_code == 0
             assert "No commits found matching 'test'" in result.stdout
+            mock_get_repo_manager.assert_called_once_with(mock_repo_config.repo_path)
+            mock_repo_manager.search_commits.assert_called_once_with(
+                "test", limit=mock.ANY
+            )
 
     def test_search_command_repo_not_found(self, cli_runner, temp_config_dir):
         """Test search command with non-existent repository name."""
@@ -285,26 +282,18 @@ class TestMainCommands:
                 "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
             ),
             mock.patch(
-                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
-            ) as mock_repo_manager_class,
-            mock.patch(
-                "ca_bhfuil.core.async_config.AsyncConfigManager"
-            ) as mock_config_manager_class,
+                "ca_bhfuil.core.async_config.get_async_config_manager"
+            ) as mock_get_config_manager,
         ):
-            mock_repo_manager = mock.AsyncMock()
-            mock_repo_manager_class.return_value = mock_repo_manager
-            # Make shutdown a regular mock (not async) to avoid warnings
-            mock_repo_manager.shutdown = mock.Mock(return_value=None)
-
+            # Mock config manager to return None for the repo
             mock_config_manager = mock.AsyncMock()
-            mock_config_manager_class.return_value = mock_config_manager
-
-            # Mock repository config lookup returning None (not found)
             mock_config_manager.get_repository_config_by_name.return_value = None
+            mock_get_config_manager.return_value = mock_config_manager
 
             result = cli_runner.invoke(
                 main.app, ["search", "test", "--repo", "nonexistent"]
             )
+
             assert result.exit_code == 1
             assert (
                 "Repository 'nonexistent' not found in configuration" in result.stdout
@@ -317,34 +306,25 @@ class TestMainCommands:
                 "ca_bhfuil.core.config.get_config_dir", return_value=temp_config_dir
             ),
             mock.patch(
-                "ca_bhfuil.core.async_repository.AsyncRepositoryManager"
-            ) as mock_repo_manager_class,
+                "ca_bhfuil.core.managers.factory.get_repository_manager"
+            ) as mock_get_repo_manager,
         ):
             mock_repo_manager = mock.AsyncMock()
-            mock_repo_manager_class.return_value = mock_repo_manager
-            # Make shutdown a regular mock (not async) to avoid warnings
-            mock_repo_manager.shutdown = mock.Mock(return_value=None)
-
-            # Mock the repository detection
-            mock_repo_manager.detect_repository.return_value = mock.AsyncMock(
-                success=True, result={"repository_path": str(temp_config_dir)}
+            mock_repo_manager.search_commits.return_value = mock.Mock(
+                success=True, commits=[], total_count=0
             )
-
-            # Mock the search results
-            mock_repo_manager.search_commits.return_value = mock.AsyncMock(
-                success=True, matches=[]
-            )
+            mock_get_repo_manager.return_value = mock_repo_manager
 
             # Test multi-word search without quotes
             result = cli_runner.invoke(main.app, ["search", "fix", "memory", "leak"])
+
             assert result.exit_code == 0
             assert "No commits found matching 'fix memory leak'" in result.stdout
 
             # Verify the search was called with joined words
-            mock_repo_manager.search_commits.assert_called_once()
-            call_args = mock_repo_manager.search_commits.call_args
-            # The second argument should be the joined query string
-            assert call_args[0][1] == "fix memory leak"
+            mock_repo_manager.search_commits.assert_called_once_with(
+                "fix memory leak", limit=mock.ANY
+            )
 
     def test_status_command(self, cli_runner, temp_config_dir):
         """Test status command."""

@@ -229,6 +229,14 @@ class TestCommitInfoBusinessLogic:
         assert feature_commit.matches_pattern("Developer")
         assert not feature_commit.matches_pattern("Bob")
 
+    def test_matches_pattern_sha(self, feature_commit):
+        """Test pattern matching in SHA fields."""
+        assert feature_commit.matches_pattern("feature123")  # Full SHA
+        assert feature_commit.matches_pattern("feat123")  # Short SHA
+        assert feature_commit.matches_pattern("FEATURE")  # Case insensitive
+        assert feature_commit.matches_pattern("123")  # Partial match
+        assert not feature_commit.matches_pattern("abcdef")  # No match
+
     def test_matches_pattern_empty_pattern(self, feature_commit):
         """Test pattern matching with empty pattern."""
         assert feature_commit.matches_pattern("")  # Empty string matches everything

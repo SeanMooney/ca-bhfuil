@@ -12,6 +12,7 @@ from ca_bhfuil.core import async_registry
 from ca_bhfuil.core import config
 from ca_bhfuil.core.git import async_git
 from ca_bhfuil.core.git import repository as repository_module
+from ca_bhfuil.core.managers import factory as manager_factory
 from ca_bhfuil.core.models import results as results_models
 
 
@@ -85,9 +86,22 @@ class AsyncRepositorySynchronizer:
                     self._perform_sync_sync, repo_config
                 )
 
-                # Update registry with latest state
+                # Update registry with latest state and sync commits to database
                 if sync_result["success"]:
                     await self._update_registry_after_sync(repo_config, sync_result)
+
+                    # Get repository manager and sync to database
+                    try:
+                        repo_manager = await manager_factory.get_repository_manager(
+                            repo_config.repo_path
+                        )
+                        await repo_manager.sync_with_database()
+                        logger.info(f"Synced {repo_config.name} commits to database")
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to sync {repo_config.name} commits to database: {e}"
+                        )
+                        # Don't fail the overall sync operation if database sync fails
 
                 return results_models.OperationResult(
                     success=sync_result["success"],
