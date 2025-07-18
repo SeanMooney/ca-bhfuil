@@ -14,6 +14,7 @@ from ca_bhfuil.storage.database import repository as db_repository
 
 # Type variable for generic result types
 T = typing.TypeVar("T", bound=result_models.OperationResult)
+ManagerKey = str
 
 
 class BaseManager:
@@ -192,11 +193,11 @@ class ManagerRegistry:
 
     def __init__(self) -> None:
         """Initialize empty manager registry."""
-        self._managers: dict[str, typing.Any] = {}
+        self._managers: dict[ManagerKey, typing.Any] = {}
         self._db_session: sqlalchemy.ext.asyncio.AsyncSession | None = None
         self._db_manager: sqlmodel_manager.SQLModelDatabaseManager | None = None
 
-    def register(self, manager_key: str, manager_instance: typing.Any) -> None:
+    def register(self, manager_key: ManagerKey, manager_instance: typing.Any) -> None:
         """Register a manager instance.
 
         Args:
@@ -206,17 +207,25 @@ class ManagerRegistry:
         self._managers[manager_key] = manager_instance
         logger.debug(f"Registered manager: {manager_key}")
 
-    def get(self, manager_key: str) -> typing.Any:
+    def get(self, manager_key: ManagerKey) -> typing.Any:
         """Get a registered manager instance.
 
         Args:
             manager_key: String key of manager to retrieve
 
         Returns:
-            The registered manager instance
+            The registered manager instance (use type hints for specific type)
 
         Raises:
             KeyError: If manager key is not registered
+
+        Note:
+            Return type is `typing.Any` to accommodate different manager types.
+            Consider using type hints when calling this method to restore type safety:
+
+            ```python
+            manager: RepositoryManager = registry.get("repository:/path/to/repo")
+            ```
         """
         if manager_key not in self._managers:
             raise KeyError(f"Manager key '{manager_key}' not registered")
