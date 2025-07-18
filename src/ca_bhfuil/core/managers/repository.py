@@ -418,7 +418,3 @@ class RepositoryManager(base_manager.BaseManager):
         except Exception as e:
             logger.error(f"Failed to cache commits to database: {e}")
 
-    async def close(self) -> None:
-        """Close database connections and clean up resources."""
-        if self._db_session:
-            await self._db_session.close()
