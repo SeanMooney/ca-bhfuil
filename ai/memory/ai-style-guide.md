@@ -2,7 +2,7 @@
 
 > **Condensed style guide for AI assistants working on Ca-Bhfuil**
 >
-> **Last Updated**: 2025-07-17 (Added context manager patterns - avoid nested with statements)
+> **Last Updated**: 2025-07-18 (Added async context manager requirements - NEVER call __aenter__/__aexit__ directly)
 >
 > **CRITICAL**: This file must stay synchronized with `docs/contributor/code-style.md`. When the full guide changes, update this AI-optimized version immediately.
 
@@ -138,6 +138,8 @@ def read_config_file(path: pathlib.Path) -> dict[str, Any]:
 ```
 
 ### Context Manager Patterns (CRITICAL)
+
+#### **Synchronous Context Managers**
 ```python
 # CORRECT: Use parenthesized context managers for multiple contexts
 with (
@@ -156,7 +158,68 @@ with mock.patch("module.function") as mock_func:
             pass
 ```
 
-**Rule**: Always use parenthesized context managers for multiple contexts. This is enforced by ruff and has been a recurring issue.
+#### **Async Context Managers (CRITICAL)**
+```python
+# CORRECT: Always use 'async with' statements for async context managers
+async with db_manager.engine.get_session() as session:
+    # Database operations
+    result = await session.execute(query)
+
+# CORRECT: Multiple async context managers
+async with (
+    db_manager.engine.get_session() as session,
+    another_async_context() as resource,
+):
+    # Use both session and resource
+    pass
+
+# CORRECT: Using contextlib.asynccontextmanager
+@contextlib.asynccontextmanager
+async def managed_operation():
+    resource = await acquire_resource()
+    try:
+        yield resource
+    finally:
+        await release_resource(resource)
+
+# WRONG: Manual __aenter__/__aexit__ calls (NEVER DO THIS)
+context_manager = db_manager.engine.get_session()
+session = await context_manager.__aenter__()
+try:
+    # Database operations
+    pass
+finally:
+    await context_manager.__aexit__(None, None, None)
+```
+
+#### **Context Manager Creation**
+```python
+# CORRECT: Using contextlib decorators
+@contextlib.asynccontextmanager
+async def database_transaction():
+    async with db_manager.engine.get_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+# CORRECT: Class-based async context manager
+class AsyncResourceManager:
+    async def __aenter__(self):
+        self.resource = await acquire_resource()
+        return self.resource
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.resource.close()
+```
+
+**Rules**:
+1. **NEVER call `__aenter__` or `__aexit__` directly** - always use `async with` statements
+2. **Always use parenthesized context managers** for multiple contexts (enforced by ruff)
+3. **Use `@contextlib.asynccontextmanager`** for complex async context management
+4. **Ensure proper cleanup** in `__aexit__` methods, even on exceptions
 
 ## Testing Philosophy
 
@@ -501,6 +564,20 @@ with (
     mock.patch("pathlib.Path.exists", return_value=True),
 ):
     # Test code here
+    pass
+
+# AVOID - Manual async context manager calls (CRITICAL VIOLATION)
+context_manager = db_manager.engine.get_session()
+session = await context_manager.__aenter__()
+try:
+    # Database operations
+    pass
+finally:
+    await context_manager.__aexit__(None, None, None)
+
+# GOOD - Use async with statements
+async with db_manager.engine.get_session() as session:
+    # Database operations
     pass
 ```
 

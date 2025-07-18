@@ -138,31 +138,33 @@ class TestBaseManager:
         assert result.error == "Manual error"
         assert result.test_data == "error handled"
 
-    async def test_get_db_repository_creates_session(self):
-        """Test that _get_db_repository creates session when needed."""
+    async def test_database_session_context_manager(self):
+        """Test that _database_session context manager works correctly."""
         manager = self.ConcreteManager()
 
         # Initially no session
         assert manager._db_session is None
 
-        # Getting db repository should create session
-        db_repo = await manager._get_db_repository()
-        assert db_repo is not None
-        assert manager._db_session is not None
+        # Using database session context manager should work
+        async with manager._database_session() as session:
+            assert session is not None
+            # Session should be available within context
+            from ca_bhfuil.storage.database import repository as db_repository
+            db_repo = db_repository.DatabaseRepository(session)
+            assert db_repo is not None
 
         await manager.close()
 
-    async def test_get_db_repository_reuses_session(self, db_session):
-        """Test that _get_db_repository reuses existing session."""
+    async def test_database_session_reuses_existing_session(self, db_session):
+        """Test that _database_session reuses existing session."""
         manager = self.ConcreteManager(db_session)
 
-        # Get repository twice
-        db_repo1 = await manager._get_db_repository()
-        db_repo2 = await manager._get_db_repository()
-
-        # Should reuse the same repository instance
-        assert db_repo1 is db_repo2
-        assert manager._db_session is db_session
+        # Session should be reused when provided
+        async with manager._database_session() as session1:
+            assert session1 is db_session
+            async with manager._database_session() as session2:
+                assert session2 is db_session
+                assert session1 is session2
 
         await manager.close()
 
@@ -180,15 +182,14 @@ class TestBaseManager:
                 # This should trigger rollback
                 raise ValueError("Transaction error")
 
-    async def test_close_owned_session(self):
-        """Test closing manager that owns its session."""
+    async def test_close_without_session(self):
+        """Test closing manager that doesn't own a session."""
         manager = self.ConcreteManager()
 
-        # Force creation of session
-        await manager._get_db_repository()
-        assert manager._db_session is not None
+        # Initially no session
+        assert manager._db_session is None
 
-        # Close should clean up
+        # Close should work without issues
         await manager.close()
         assert manager._db_session is None
         assert manager._db_repository is None
@@ -197,12 +198,13 @@ class TestBaseManager:
         """Test closing manager with external session."""
         manager = self.ConcreteManager(db_session)
 
-        # Get repository to set up internal state
-        await manager._get_db_repository()
+        # Session should be available
+        assert manager._db_session is db_session
 
-        # Close should not close external session
+        # Close should clear session reference but not close external session
         await manager.close()
-        assert manager._db_session is db_session  # External session preserved
+        assert manager._db_session is None  # Reference cleared
+        assert manager._db_repository is None
 
 
 class TestManagerRegistry:

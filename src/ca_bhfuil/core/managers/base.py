@@ -43,13 +43,32 @@ class BaseManager:
         self._session_owned = db_session is None
         self._manager_owned = db_manager is None
 
+    @contextlib.asynccontextmanager
+    async def _database_session(
+        self,
+    ) -> typing.AsyncIterator[sqlalchemy.ext.asyncio.AsyncSession]:
+        """Context manager for database sessions.
+
+        Yields:
+            Database session for operations
+        """
+        if self._db_session is not None:
+            # Use existing session
+            yield self._db_session
+        else:
+            # Create new session with proper context management
+            db_manager = await self._get_db_manager()
+            async with db_manager.engine.get_session() as session:
+                yield session
+
     async def _get_db_repository(self) -> db_repository.DatabaseRepository:
         """Get database repository, creating session if needed."""
         if self._db_repository is None:
             if self._db_session is None:
-                # Create session through database manager
-                db_manager = await self._get_db_manager()
-                self._db_session = await db_manager.engine.get_session().__aenter__()
+                # This should not be called directly anymore - use _database_session context manager
+                raise RuntimeError(
+                    "Cannot get repository without session. Use _database_session context manager."
+                )
             self._db_repository = db_repository.DatabaseRepository(self._db_session)
         return self._db_repository
 
@@ -76,8 +95,9 @@ class BaseManager:
         logger.debug(f"Starting {operation_name}")
 
         try:
-            db_repo = await self._get_db_repository()
-            yield start_time, db_repo
+            async with self._database_session() as session:
+                db_repo = db_repository.DatabaseRepository(session)
+                yield start_time, db_repo
 
         except Exception as e:
             duration = time.perf_counter() - start_time
@@ -146,34 +166,22 @@ class BaseManager:
         Yields:
             Database session with transaction management
         """
-        session = await self._get_session_for_transaction()
+        async with self._database_session() as session:
+            try:
+                yield session
+                await session.commit()
 
-        try:
-            yield session
-            await session.commit()
-
-        except Exception:
-            await session.rollback()
-            raise
-
-    async def _get_session_for_transaction(self) -> sqlalchemy.ext.asyncio.AsyncSession:
-        """Get or create session for transaction use.
-
-        Returns:
-            Database session ready for transaction
-        """
-        if self._db_session is None:
-            db_manager = await self._get_db_manager()
-            self._db_session = await db_manager.engine.get_session().__aenter__()
-        return self._db_session
+            except Exception:
+                await session.rollback()
+                raise
 
     async def close(self) -> None:
         """Close database connections and clean up resources."""
-        if self._session_owned and self._db_session:
-            await self._db_session.close()
-            self._db_session = None
-            self._db_repository = None
+        # Clear session references (actual cleanup handled by context managers)
+        self._db_session = None
+        self._db_repository = None
 
+        # Close database manager if we own it
         if self._manager_owned and self._db_manager:
             await self._db_manager.close()
             self._db_manager = None

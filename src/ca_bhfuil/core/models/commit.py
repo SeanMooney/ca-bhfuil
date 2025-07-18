@@ -125,12 +125,14 @@ class CommitInfo(pydantic.BaseModel):
             True if the commit matches the pattern
 
         Note:
-            Searches in commit message, author name, and author email.
+            Searches in commit SHA, short SHA, commit message, author name, and author email.
             Case-insensitive matching.
         """
         pattern_lower = pattern.lower()
         return (
-            pattern_lower in self.message.lower()
+            pattern_lower in self.sha.lower()
+            or pattern_lower in self.short_sha.lower()
+            or pattern_lower in self.message.lower()
             or pattern_lower in self.author_name.lower()
             or pattern_lower in self.author_email.lower()
         )

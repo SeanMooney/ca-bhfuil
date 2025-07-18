@@ -135,6 +135,39 @@ class TestRepositoryManager:
         assert result.total_count == 0
         assert result.search_pattern == "nonexistent"
 
+    async def test_search_commits_sha_matching(self, repository_manager):
+        """Test commit search with SHA pattern matching."""
+        # Test full SHA matching
+        result = await repository_manager.search_commits("abc123def456", limit=10)
+
+        assert result.success
+        assert len(result.commits) == 1
+        assert result.total_count == 1
+        assert result.search_pattern == "abc123def456"
+        assert result.commits[0].sha == "abc123def456789abc123def456789abc123def4"
+
+    async def test_search_commits_short_sha_matching(self, repository_manager):
+        """Test commit search with short SHA pattern matching."""
+        # Test short SHA matching
+        result = await repository_manager.search_commits("abc123d", limit=10)
+
+        assert result.success
+        assert len(result.commits) == 1
+        assert result.total_count == 1
+        assert result.search_pattern == "abc123d"
+        assert result.commits[0].short_sha == "abc123d"
+
+    async def test_search_commits_partial_sha_matching(self, repository_manager):
+        """Test commit search with partial SHA pattern matching."""
+        # Test partial SHA matching
+        result = await repository_manager.search_commits("123def", limit=10)
+
+        assert result.success
+        assert len(result.commits) == 1
+        assert result.total_count == 1
+        assert result.search_pattern == "123def"
+        assert result.commits[0].sha == "abc123def456789abc123def456789abc123def4"
+
     async def test_analyze_repository_success(self, repository_manager):
         """Test repository analysis with successful result."""
         result = await repository_manager.analyze_repository()

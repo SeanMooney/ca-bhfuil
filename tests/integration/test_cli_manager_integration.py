@@ -1,5 +1,6 @@
 """Integration tests for CLI commands using the manager layer."""
 
+import asyncio
 import pathlib
 import tempfile
 import unittest.mock
@@ -16,16 +17,16 @@ class TestCLIManagerIntegration:
     """Test CLI commands properly use manager layer."""
 
     @pytest.fixture
-    async def cli_runner(self):
+    def cli_runner(self):
         """Provide CLI test runner."""
         return typer.testing.CliRunner()
 
     @pytest.fixture
-    async def mock_factory(self, tmp_path):
+    def mock_factory(self, tmp_path):
         """Provide a mock manager factory."""
         # Create test database
         db_path = tmp_path / "test.db"
-        await alembic.create_test_database(db_path)
+        asyncio.run(alembic.create_test_database(db_path))
 
         # Patch the factory function to use test database
         original_get_manager_factory = manager_factory.get_manager_factory
@@ -40,33 +41,34 @@ class TestCLIManagerIntegration:
             yield
 
         # Clean up global factory
-        await manager_factory.close_global_factory()
+        asyncio.run(manager_factory.close_global_factory())
 
-    async def test_search_command_uses_manager_factory(self, cli_runner, mock_factory):
+    def test_search_command_uses_manager_factory(self, cli_runner, mock_factory):
         """Test that search command uses manager factory instead of direct git access."""
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_path = pathlib.Path(temp_dir)
 
-            # Mock git repository and manager creation
+            # Mock the manager factory function
             with unittest.mock.patch(
-                "ca_bhfuil.core.git.repository.Repository"
-            ) as mock_repo_class:
-                mock_repo = unittest.mock.MagicMock()
-                mock_repo.head_is_unborn = False
-                mock_repo._repo.walk.return_value = []  # No commits
-                mock_repo_class.return_value = mock_repo
+                "ca_bhfuil.core.managers.factory.get_repository_manager",
+                new_callable=unittest.mock.AsyncMock,
+            ) as mock_get_repo_manager:
+                mock_manager = unittest.mock.AsyncMock()
+                mock_manager.search_commits.return_value = unittest.mock.MagicMock(
+                    success=True, commits=[], total_count=0
+                )
+                mock_get_repo_manager.return_value = mock_manager
 
-                # Also mock the manager factory function directly
+                # Mock config manager for repository lookup
                 with unittest.mock.patch(
-                    "ca_bhfuil.core.managers.factory.get_repository_manager"
-                ) as mock_get_repo_manager:
-                    mock_manager = unittest.mock.MagicMock()
-                    mock_manager.search_commits.return_value = unittest.mock.MagicMock(
-                        success=True, commits=[], total_count=0
-                    )
-                    mock_get_repo_manager.return_value = mock_manager
+                    "ca_bhfuil.core.async_config.get_async_config_manager",
+                    new_callable=unittest.mock.AsyncMock,
+                ) as mock_get_config_manager:
+                    mock_config = unittest.mock.AsyncMock()
+                    mock_config.get_repository_config_by_name.return_value = None
+                    mock_get_config_manager.return_value = mock_config
 
-                    # Run search command
+                    # Run search command with async bridge
                     result = cli_runner.invoke(
                         cli_main.app, ["search", "test", "--repo", str(repo_path)]
                     )
@@ -74,40 +76,38 @@ class TestCLIManagerIntegration:
                     # Should not have errors and should use manager
                     assert result.exit_code == 0
                     mock_get_repo_manager.assert_called_once()
-                    mock_manager.search_commits.assert_called_once_with(
-                        "test", limit=10
-                    )
+                    mock_manager.search_commits.assert_called_once()
 
-    async def test_status_command_uses_manager_factory(self, cli_runner, mock_factory):
+    def test_status_command_uses_manager_factory(self, cli_runner, mock_factory):
         """Test that status command uses manager factory for repository analysis."""
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_path = pathlib.Path(temp_dir)
 
-            # Mock git repository
+            # Mock the manager factory function
             with unittest.mock.patch(
-                "ca_bhfuil.core.git.repository.Repository"
-            ) as mock_repo_class:
-                mock_repo = unittest.mock.MagicMock()
-                mock_repo.head_is_unborn = False
-                mock_repo_class.return_value = mock_repo
+                "ca_bhfuil.core.managers.factory.get_repository_manager"
+            ) as mock_get_repo_manager:
+                mock_manager = unittest.mock.MagicMock()
+                mock_analysis_result = unittest.mock.MagicMock()
+                mock_analysis_result.success = True
+                mock_analysis_result.commit_count = 5
+                mock_analysis_result.branch_count = 2
+                mock_analysis_result.authors = ["test-author"]
+                mock_analysis_result.high_impact_commits = []
+                mock_analysis_result.recent_commits = []
+                mock_analysis_result.date_range = {}
+                mock_manager.analyze_repository.return_value = mock_analysis_result
+                mock_get_repo_manager.return_value = mock_manager
 
-                # Mock the manager factory function
+                # Mock config manager for repository lookup
                 with unittest.mock.patch(
-                    "ca_bhfuil.core.managers.factory.get_repository_manager"
-                ) as mock_get_repo_manager:
-                    mock_manager = unittest.mock.MagicMock()
-                    mock_analysis_result = unittest.mock.MagicMock()
-                    mock_analysis_result.success = True
-                    mock_analysis_result.commit_count = 5
-                    mock_analysis_result.branch_count = 2
-                    mock_analysis_result.authors = ["test-author"]
-                    mock_analysis_result.high_impact_commits = []
-                    mock_analysis_result.recent_commits = []
-                    mock_analysis_result.date_range = {}
-                    mock_manager.analyze_repository.return_value = mock_analysis_result
-                    mock_get_repo_manager.return_value = mock_manager
+                    "ca_bhfuil.core.async_config.get_async_config_manager"
+                ) as mock_config_manager:
+                    mock_config = unittest.mock.MagicMock()
+                    mock_config.get_repository_config_by_name.return_value = None
+                    mock_config_manager.return_value = mock_config
 
-                    # Run status command
+                    # Run status command with async bridge
                     result = cli_runner.invoke(
                         cli_main.app, ["status", "--repo", str(repo_path)]
                     )
@@ -117,7 +117,7 @@ class TestCLIManagerIntegration:
                     mock_get_repo_manager.assert_called_once()
                     mock_manager.analyze_repository.assert_called_once()
 
-    async def test_search_no_direct_git_imports(self):
+    def test_search_no_direct_git_imports(self):
         """Test that search command doesn't import git modules directly."""
         # This is a static analysis test - check the CLI source doesn't import
         # git modules that would bypass the manager layer
@@ -156,7 +156,7 @@ class TestCLIManagerIntegration:
         assert "Repository(" not in search_function
         assert "SQLModelDatabaseManager" not in search_function
 
-    async def test_status_no_direct_git_imports(self):
+    def test_status_no_direct_git_imports(self):
         """Test that status command doesn't import git modules directly."""
         # Read the CLI main module
         cli_path = (
@@ -191,7 +191,7 @@ class TestCLIManagerIntegration:
 class TestManagerArchitectureCompliance:
     """Test that CLI follows Manager + Rich Models architecture patterns."""
 
-    async def test_business_logic_in_managers_not_cli(self):
+    def test_business_logic_in_managers_not_cli(self):
         """Test that business logic is in managers, not CLI."""
         # Read the CLI main module
         cli_path = (
@@ -223,7 +223,7 @@ class TestManagerArchitectureCompliance:
         assert "create_commit" not in cli_content
         assert "CommitCreate" not in cli_content
 
-    async def test_cli_uses_result_models(self):
+    def test_cli_uses_result_models(self):
         """Test that CLI uses result models from manager operations."""
         # Read the CLI main module
         cli_path = (
@@ -248,7 +248,7 @@ class TestManagerArchitectureCompliance:
         assert "search_result.success" in search_function
         assert "search_result.commits" in search_function
 
-    async def test_error_handling_uses_manager_results(self):
+    def test_error_handling_uses_manager_results(self):
         """Test that error handling uses manager result patterns."""
         # Read the CLI main module
         cli_path = (

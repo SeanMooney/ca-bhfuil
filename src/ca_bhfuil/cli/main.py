@@ -368,7 +368,7 @@ async def search(
         None,
         "--repo",
         "-r",
-        help="Repository name from configuration (defaults to current directory)",
+        help="Repository name or path (defaults to current directory)",
         autocompletion=completion.complete_repository_name,
     ),
     max_results: int = typer.Option(
@@ -388,29 +388,42 @@ async def search(
     try:
         # Get repository path from configuration or use current directory
         config_manager = await async_config.get_async_config_manager()
+        repo_path: pathlib.Path | None = None
 
         if repo_name:
-            # Look up repository configuration by name
-            repo_config = await config_manager.get_repository_config_by_name(repo_name)
-            if not repo_config:
-                rich_console.print(
-                    f"[red]❌ Repository '{repo_name}' not found in configuration[/red]"
+            # Check if repo_name is a valid path
+            if pathlib.Path(repo_name).is_dir():
+                repo_path = pathlib.Path(repo_name).resolve()
+                if verbose:
+                    rich_console.print(f"📁 Using repository path: {repo_path}")
+            else:
+                # Look up repository configuration by name
+                repo_config = await config_manager.get_repository_config_by_name(
+                    repo_name
                 )
-                rich_console.print(
-                    "💡 Use 'ca-bhfuil repo list' to see configured repositories"
-                )
-                raise typer.Exit(1)
+                if not repo_config:
+                    rich_console.print(
+                        f"[red]❌ Repository '{repo_name}' not found in configuration[/red]"
+                    )
+                    rich_console.print(
+                        "💡 Use 'ca-bhfuil repo list' to see configured repositories"
+                    )
+                    raise typer.Exit(1)
 
-            repo_path = repo_config.repo_path
-            if verbose:
-                rich_console.print(
-                    f"📁 Using configured repository '{repo_name}': {repo_path}"
-                )
+                repo_path = repo_config.repo_path
+                if verbose:
+                    rich_console.print(
+                        f"📁 Using configured repository '{repo_name}': {repo_path}"
+                    )
         else:
             # Use current directory
             repo_path = pathlib.Path.cwd()
             if verbose:
                 rich_console.print(f"📁 Using current directory: {repo_path}")
+
+        if not repo_path or not repo_path.exists():
+            rich_console.print(f"[red]❌ Repository path not found: {repo_path}[/red]")
+            raise typer.Exit(1)
 
         # Use manager factory to get repository manager
         repo_manager = await with_progress(

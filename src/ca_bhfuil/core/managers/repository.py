@@ -4,6 +4,7 @@ import pathlib
 import typing
 
 from loguru import logger
+import pygit2
 import sqlalchemy.ext.asyncio
 
 from ca_bhfuil.core.git import repository as git_repository
@@ -11,6 +12,7 @@ from ca_bhfuil.core.managers import base as base_manager
 from ca_bhfuil.core.models import commit as commit_models
 from ca_bhfuil.core.models import results as result_models
 from ca_bhfuil.storage.database import models as db_models
+from ca_bhfuil.storage.database import repository as db_repository
 
 
 class RepositoryAnalysisResult(result_models.OperationResult):
@@ -68,23 +70,25 @@ class RepositoryManager(base_manager.BaseManager):
         Returns:
             List of CommitInfo business models
         """
-        db_repo = await self._get_db_repository()
-
         if from_cache:
-            # Try to get repository from database
-            db_repository_record = await db_repo.repositories.get_by_path(
-                str(self.repository_path)
-            )
+            # Try to load from database cache
+            async with self._database_session() as session:
+                db_repo = db_repository.DatabaseRepository(session)
 
-            if db_repository_record and db_repository_record.id is not None:
-                # Load commits from database
-                db_commits = await db_repo.commits.get_by_repository(
-                    db_repository_record.id, limit=limit
+                # Try to get repository from database
+                db_repository_record = await db_repo.repositories.get_by_path(
+                    str(self.repository_path)
                 )
-                logger.debug(
-                    f"Loaded {len(db_commits)} commits from database cache for {self.repository_path}"
-                )
-                return [commit_models.CommitInfo.from_db_model(c) for c in db_commits]
+
+                if db_repository_record and db_repository_record.id is not None:
+                    # Load commits from database
+                    db_commits = await db_repo.commits.get_by_repository(
+                        db_repository_record.id, limit=limit
+                    )
+                    logger.debug(
+                        f"Loaded {len(db_commits)} commits from database cache for {self.repository_path}"
+                    )
+                    return [commit_models.CommitInfo.from_db_model(c) for c in db_commits]
 
         # Load from git and optionally cache
         logger.debug(f"Loading commits from git for {self.repository_path}")
@@ -95,6 +99,38 @@ class RepositoryManager(base_manager.BaseManager):
             await self._cache_commits_to_database(git_commits)
 
         return git_commits
+
+    def _search_all_commits_from_git(
+        self, pattern: str
+    ) -> list[commit_models.CommitInfo]:
+        """Search all commits in git history matching a pattern.
+
+        Args:
+            pattern: Pattern to search for in commit messages, authors, etc.
+
+        Returns:
+            List of CommitInfo models that match the pattern
+        """
+        # Use the existing git repository wrapper to search commits
+        try:
+            if self._git_repo.head_is_unborn:
+                return []
+
+            # Walk through all commits from HEAD, no artificial limits
+            matching_commits = []
+            for commit in self._git_repo._repo.walk(self._git_repo._repo.head.target):
+                commit_info = self._git_repo._commit_to_model(commit)
+                if commit_info.matches_pattern(pattern):
+                    matching_commits.append(commit_info)
+
+            return matching_commits
+
+        except (pygit2.GitError, RuntimeError) as e:
+            logger.error(f"Git repository error during search: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error searching git history: {e}")
+            return []
 
     async def search_commits(
         self, pattern: str, limit: int = 100
@@ -112,25 +148,55 @@ class RepositoryManager(base_manager.BaseManager):
             f"search commits with pattern '{pattern}'"
         ) as (start_time, db_repo):
             try:
-                # Get all commits (from cache if available)
-                all_commits = await self.load_commits(from_cache=True, limit=1000)
+                # First, try to search in database cache (limited scope)
+                db_commits = await self.load_commits(from_cache=True, limit=1000)
+                logger.debug(f"Loaded {len(db_commits)} commits from database cache")
 
-                # Filter commits using business logic
-                matching_commits = [
-                    commit for commit in all_commits if commit.matches_pattern(pattern)
+                # Search in database cache
+                db_matching_commits = [
+                    commit for commit in db_commits if commit.matches_pattern(pattern)
                 ]
+                logger.debug(
+                    f"Found {len(db_matching_commits)} matching commits in database cache"
+                )
+
+                # If we have enough matches from database, use them
+                if len(db_matching_commits) >= limit:
+                    # Sort by impact score (highest first) and limit results
+                    db_matching_commits.sort(
+                        key=lambda c: c.calculate_impact_score(), reverse=True
+                    )
+                    limited_commits = db_matching_commits[:limit]
+
+                    return self._create_success_result(
+                        CommitSearchResult,
+                        start_time,
+                        commits=limited_commits,
+                        total_count=len(db_matching_commits),
+                        search_pattern=pattern,
+                        repository_path=str(self.repository_path),
+                    )
+
+                # If database search doesn't have enough results, search entire git history
+                logger.debug(
+                    "Database cache insufficient, searching entire git history"
+                )
+                all_matching_commits = self._search_all_commits_from_git(pattern)
+                logger.debug(
+                    f"Found {len(all_matching_commits)} matching commits in full git history"
+                )
 
                 # Sort by impact score (highest first) and limit results
-                matching_commits.sort(
+                all_matching_commits.sort(
                     key=lambda c: c.calculate_impact_score(), reverse=True
                 )
-                limited_commits = matching_commits[:limit]
+                limited_commits = all_matching_commits[:limit]
 
                 return self._create_success_result(
                     CommitSearchResult,
                     start_time,
                     commits=limited_commits,
-                    total_count=len(matching_commits),
+                    total_count=len(all_matching_commits),
                     search_pattern=pattern,
                     repository_path=str(self.repository_path),
                 )
@@ -213,50 +279,51 @@ class RepositoryManager(base_manager.BaseManager):
         This method loads fresh data from git and updates the database cache.
         """
         try:
-            db_repo = await self._get_db_repository()
+            async with self._database_session() as session:
+                db_repo = db_repository.DatabaseRepository(session)
 
-            # Ensure repository exists in database
-            db_repository_record = await db_repo.repositories.get_by_path(
-                str(self.repository_path)
-            )
-
-            if not db_repository_record:
-                # Create repository record
-                repo_name = self.repository_path.name
-                repo_create = db_models.RepositoryCreate(
-                    path=str(self.repository_path), name=repo_name
+                # Ensure repository exists in database
+                db_repository_record = await db_repo.repositories.get_by_path(
+                    str(self.repository_path)
                 )
-                db_repository_record = await db_repo.repositories.create(repo_create)
-                logger.info(f"Created repository record for {self.repository_path}")
 
-            # Get repository ID and ensure it's valid
-            repository_id = db_repository_record.id
-            if repository_id is None:
-                raise RuntimeError("Repository ID is None after creation/retrieval")
+                if not db_repository_record:
+                    # Create repository record
+                    repo_name = self.repository_path.name
+                    repo_create = db_models.RepositoryCreate(
+                        path=str(self.repository_path), name=repo_name
+                    )
+                    db_repository_record = await db_repo.repositories.create(repo_create)
+                    logger.info(f"Created repository record for {self.repository_path}")
 
-            # Load fresh commits from git
-            git_commits = self._load_commits_from_git(limit=1000)
+                # Get repository ID and ensure it's valid
+                repository_id = db_repository_record.id
+                if repository_id is None:
+                    raise RuntimeError("Repository ID is None after creation/retrieval")
 
-            # Sync commits to database
-            synced_count = 0
-            for commit in git_commits:
-                # Check if commit already exists
-                existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
-                if not existing:
-                    # Create new commit record
-                    commit_create = commit.to_db_create(repository_id)
-                    await db_repo.commits.create(commit_create)
-                    synced_count += 1
+                # Load fresh commits from git
+                git_commits = self._load_commits_from_git(limit=1000)
 
-            # Update repository statistics
-            git_stats = self._git_repo.get_repository_stats()
-            await db_repo.repositories.update_stats(
-                repository_id,
-                commit_count=len(git_commits),
-                branch_count=git_stats.get("total_branches", 0),
-            )
+                # Sync commits to database
+                synced_count = 0
+                for commit in git_commits:
+                    # Check if commit already exists
+                    existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
+                    if not existing:
+                        # Create new commit record
+                        commit_create = commit.to_db_create(repository_id)
+                        await db_repo.commits.create(commit_create)
+                        synced_count += 1
 
-            logger.info(f"Synced {synced_count} new commits for {self.repository_path}")
+                # Update repository statistics
+                git_stats = self._git_repo.get_repository_stats()
+                await db_repo.repositories.update_stats(
+                    repository_id,
+                    commit_count=len(git_commits),
+                    branch_count=git_stats.get("total_branches", 0),
+                )
+
+                logger.info(f"Synced {synced_count} new commits for {self.repository_path}")
 
         except Exception as e:
             logger.error(f"Database sync failed for {self.repository_path}: {e}")
@@ -302,38 +369,39 @@ class RepositoryManager(base_manager.BaseManager):
             return
 
         try:
-            db_repo = await self._get_db_repository()
+            async with self._database_session() as session:
+                db_repo = db_repository.DatabaseRepository(session)
 
-            # Ensure repository exists in database
-            db_repository_record = await db_repo.repositories.get_by_path(
-                str(self.repository_path)
-            )
-
-            if not db_repository_record:
-                # Create repository record
-                repo_name = self.repository_path.name
-                repo_create = db_models.RepositoryCreate(
-                    path=str(self.repository_path), name=repo_name
+                # Ensure repository exists in database
+                db_repository_record = await db_repo.repositories.get_by_path(
+                    str(self.repository_path)
                 )
-                db_repository_record = await db_repo.repositories.create(repo_create)
 
-            # Get repository ID and ensure it's valid
-            repository_id = db_repository_record.id
-            if repository_id is None:
-                logger.error("Repository ID is None, cannot cache commits")
-                return
+                if not db_repository_record:
+                    # Create repository record
+                    repo_name = self.repository_path.name
+                    repo_create = db_models.RepositoryCreate(
+                        path=str(self.repository_path), name=repo_name
+                    )
+                    db_repository_record = await db_repo.repositories.create(repo_create)
 
-            # Cache commits
-            cached_count = 0
-            for commit in commits:
-                # Check if commit already exists
-                existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
-                if not existing:
-                    commit_create = commit.to_db_create(repository_id)
-                    await db_repo.commits.create(commit_create)
-                    cached_count += 1
+                # Get repository ID and ensure it's valid
+                repository_id = db_repository_record.id
+                if repository_id is None:
+                    logger.error("Repository ID is None, cannot cache commits")
+                    return
 
-            logger.debug(f"Cached {cached_count} commits to database")
+                # Cache commits
+                cached_count = 0
+                for commit in commits:
+                    # Check if commit already exists
+                    existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
+                    if not existing:
+                        commit_create = commit.to_db_create(repository_id)
+                        await db_repo.commits.create(commit_create)
+                        cached_count += 1
+
+                logger.debug(f"Cached {cached_count} commits to database")
 
         except Exception as e:
             logger.error(f"Failed to cache commits to database: {e}")
