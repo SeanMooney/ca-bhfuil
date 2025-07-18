@@ -210,7 +210,7 @@ class AsyncResourceManager:
     async def __aenter__(self):
         self.resource = await acquire_resource()
         return self.resource
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.resource.close()
 ```
