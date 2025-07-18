@@ -150,6 +150,7 @@ class TestBaseManager:
             assert session is not None
             # Session should be available within context
             from ca_bhfuil.storage.database import repository as db_repository
+
             db_repo = db_repository.DatabaseRepository(session)
             assert db_repo is not None
 

@@ -88,7 +88,9 @@ class RepositoryManager(base_manager.BaseManager):
                     logger.debug(
                         f"Loaded {len(db_commits)} commits from database cache for {self.repository_path}"
                     )
-                    return [commit_models.CommitInfo.from_db_model(c) for c in db_commits]
+                    return [
+                        commit_models.CommitInfo.from_db_model(c) for c in db_commits
+                    ]
 
         # Load from git and optionally cache
         logger.debug(f"Loading commits from git for {self.repository_path}")
@@ -293,7 +295,9 @@ class RepositoryManager(base_manager.BaseManager):
                     repo_create = db_models.RepositoryCreate(
                         path=str(self.repository_path), name=repo_name
                     )
-                    db_repository_record = await db_repo.repositories.create(repo_create)
+                    db_repository_record = await db_repo.repositories.create(
+                        repo_create
+                    )
                     logger.info(f"Created repository record for {self.repository_path}")
 
                 # Get repository ID and ensure it's valid
@@ -308,7 +312,9 @@ class RepositoryManager(base_manager.BaseManager):
                 synced_count = 0
                 for commit in git_commits:
                     # Check if commit already exists
-                    existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
+                    existing = await db_repo.commits.get_by_sha(
+                        repository_id, commit.sha
+                    )
                     if not existing:
                         # Create new commit record
                         commit_create = commit.to_db_create(repository_id)
@@ -323,7 +329,9 @@ class RepositoryManager(base_manager.BaseManager):
                     branch_count=git_stats.get("total_branches", 0),
                 )
 
-                logger.info(f"Synced {synced_count} new commits for {self.repository_path}")
+                logger.info(
+                    f"Synced {synced_count} new commits for {self.repository_path}"
+                )
 
         except Exception as e:
             logger.error(f"Database sync failed for {self.repository_path}: {e}")
@@ -383,7 +391,9 @@ class RepositoryManager(base_manager.BaseManager):
                     repo_create = db_models.RepositoryCreate(
                         path=str(self.repository_path), name=repo_name
                     )
-                    db_repository_record = await db_repo.repositories.create(repo_create)
+                    db_repository_record = await db_repo.repositories.create(
+                        repo_create
+                    )
 
                 # Get repository ID and ensure it's valid
                 repository_id = db_repository_record.id
@@ -395,7 +405,9 @@ class RepositoryManager(base_manager.BaseManager):
                 cached_count = 0
                 for commit in commits:
                     # Check if commit already exists
-                    existing = await db_repo.commits.get_by_sha(repository_id, commit.sha)
+                    existing = await db_repo.commits.get_by_sha(
+                        repository_id, commit.sha
+                    )
                     if not existing:
                         commit_create = commit.to_db_create(repository_id)
                         await db_repo.commits.create(commit_create)
