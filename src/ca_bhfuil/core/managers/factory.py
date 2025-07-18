@@ -69,7 +69,7 @@ class ManagerFactory:
 
         # Register with registry for tracking
         manager_key = f"repository:{repository_path}"
-        self._registry.register(type(manager_key), repo_manager)
+        self._registry.register(manager_key, repo_manager)
 
         return repo_manager
 

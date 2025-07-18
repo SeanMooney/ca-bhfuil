@@ -192,35 +192,35 @@ class ManagerRegistry:
 
     def __init__(self) -> None:
         """Initialize empty manager registry."""
-        self._managers: dict[type, typing.Any] = {}
+        self._managers: dict[str, typing.Any] = {}
         self._db_session: sqlalchemy.ext.asyncio.AsyncSession | None = None
         self._db_manager: sqlmodel_manager.SQLModelDatabaseManager | None = None
 
-    def register(self, manager_type: type, manager_instance: typing.Any) -> None:
+    def register(self, manager_key: str, manager_instance: typing.Any) -> None:
         """Register a manager instance.
 
         Args:
-            manager_type: The type/class of the manager
+            manager_key: String key for instance-specific tracking
             manager_instance: The manager instance to register
         """
-        self._managers[manager_type] = manager_instance
-        logger.debug(f"Registered manager: {manager_type.__name__}")
+        self._managers[manager_key] = manager_instance
+        logger.debug(f"Registered manager: {manager_key}")
 
-    def get(self, manager_type: type[T]) -> T:
+    def get(self, manager_key: str) -> typing.Any:
         """Get a registered manager instance.
 
         Args:
-            manager_type: The type of manager to retrieve
+            manager_key: String key of manager to retrieve
 
         Returns:
             The registered manager instance
 
         Raises:
-            KeyError: If manager type is not registered
+            KeyError: If manager key is not registered
         """
-        if manager_type not in self._managers:
-            raise KeyError(f"Manager type {manager_type.__name__} not registered")
-        return typing.cast("T", self._managers[manager_type])
+        if manager_key not in self._managers:
+            raise KeyError(f"Manager key '{manager_key}' not registered")
+        return self._managers[manager_key]
 
     async def set_shared_database_manager(
         self, db_manager: sqlmodel_manager.SQLModelDatabaseManager

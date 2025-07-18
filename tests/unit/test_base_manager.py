@@ -221,16 +221,16 @@ class TestManagerRegistry:
         mock_manager = unittest.mock.MagicMock()
 
         # Register manager
-        registry.register(str, mock_manager)
+        registry.register("test_manager", mock_manager)
 
         # Retrieve manager
-        retrieved = registry.get(str)
+        retrieved = registry.get("test_manager")
         assert retrieved is mock_manager
 
     async def test_get_unregistered_manager(self, registry):
         """Test retrieving unregistered manager raises error."""
-        with pytest.raises(KeyError, match="Manager type int not registered"):
-            registry.get(int)
+        with pytest.raises(KeyError, match="Manager key 'nonexistent' not registered"):
+            registry.get("nonexistent")
 
     @pytest.fixture
     async def db_session(self, tmp_path):
