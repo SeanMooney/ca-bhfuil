@@ -36,7 +36,7 @@ repos:
 
   # Ruff formatting and linting (primary tool - auto-fix enabled)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.3
+    rev: v0.12.7
     hooks:
       # Run the formatter first (auto-fix)
       - id: ruff-format
@@ -48,7 +48,7 @@ repos:
 
   # Type checking (strict mode, no auto-fix)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
+    rev: v1.17.1
     hooks:
       - id: mypy
         additional_dependencies:
