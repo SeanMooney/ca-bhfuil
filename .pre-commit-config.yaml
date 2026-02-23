@@ -5,7 +5,7 @@
 repos:
   # File format validation (fast fail)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
       - id: check-toml
@@ -16,7 +16,7 @@ repos:
 
   # File cleanup (auto-fix)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
@@ -29,14 +29,14 @@ repos:
 
   # Remove tabs (auto-fix)
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.5
+    rev: v1.5.6
     hooks:
       - id: remove-tabs
         exclude: '.*\.(svg)$'
 
   # Ruff formatting and linting (primary tool - auto-fix enabled)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.3
+    rev: v0.15.2
     hooks:
       # Run the formatter first (auto-fix)
       - id: ruff-format
@@ -48,7 +48,7 @@ repos:
 
   # Type checking (strict mode, no auto-fix)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
+    rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies:
@@ -72,7 +72,7 @@ repos:
 
   # Conventional commit message validation
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.2.0
+    rev: v4.4.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
