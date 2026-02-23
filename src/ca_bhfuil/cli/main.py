@@ -761,9 +761,9 @@ async def repo_add(
         # Infer name from URL if not provided
         if not name:
             if url.endswith(".git"):
-                name = url.split("/")[-1][:-4]  # Remove .git extension
+                name = url.rsplit("/", maxsplit=1)[-1][:-4]  # Remove .git extension
             else:
-                name = url.split("/")[-1]
+                name = url.rsplit("/", maxsplit=1)[-1]
 
         # Check if repository already exists in config
         for repo in current_config.repos:
