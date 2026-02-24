@@ -103,7 +103,7 @@ class TestAsyncErrorHandler:
         async def succeed():
             return 42
 
-        result = await handler.retry(lambda: succeed(), retry_on=(ValueError,))
+        result = await handler.retry(succeed, retry_on=(ValueError,))
         assert result == 42
 
     async def test_retry_success_after_failures(self):
@@ -117,7 +117,7 @@ class TestAsyncErrorHandler:
                 raise ValueError("fail")
             return "ok"
 
-        result = await handler.retry(lambda: sometimes_fail(), retry_on=(ValueError,))
+        result = await handler.retry(sometimes_fail, retry_on=(ValueError,))
         assert result == "ok"
         assert attempts == 3
 
@@ -128,7 +128,7 @@ class TestAsyncErrorHandler:
             raise ValueError("fail")
 
         with pytest.raises(ValueError):
-            await handler.retry(lambda: always_fail(), retry_on=(ValueError,))
+            await handler.retry(always_fail, retry_on=(ValueError,))
 
     async def test_retry_wrong_exception_type(self):
         handler = async_errors.AsyncErrorHandler(attempts=3)
@@ -137,7 +137,7 @@ class TestAsyncErrorHandler:
             raise TypeError("fail")
 
         with pytest.raises(TypeError):
-            await handler.retry(lambda: fail_with_type_error(), retry_on=(ValueError,))
+            await handler.retry(fail_with_type_error, retry_on=(ValueError,))
 
 
 @pytest.mark.asyncio

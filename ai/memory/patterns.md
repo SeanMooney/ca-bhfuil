@@ -328,6 +328,33 @@ def alembic_database():
 - Examples: `2025_06_30_add_commit_branch_relationship`
 - Include rationale in migration docstring
 
+## GitHub API Patterns
+
+### Pull Request Review Comments
+**Get specific review comments from code review tools (e.g., Gemini Code Assist)**:
+
+```bash
+# Get specific review comments by review ID
+gh api repos/SeanMooney/ca-bhfuil/pulls/24/reviews/3034131079/comments
+
+# Get all reviews for a PR (to find review IDs)
+gh api repos/SeanMooney/ca-bhfuil/pulls/24/reviews
+
+# Get general PR comments (not code review comments)
+gh pr view 24 --json comments
+```
+
+**Why this pattern works**:
+- Provides detailed line-by-line feedback with context
+- Includes priority levels and specific suggestions
+- Preserves the exact review content and location
+- Allows for targeted responses to specific feedback
+
+**When to use**:
+- When addressing code review feedback from automated tools
+- When need to see specific line comments with diff context
+- When responding to detailed technical feedback on PRs
+
 ---
 
 **Remember**: Patterns should be living documents. Update this file when you discover new effective patterns or identify anti-patterns to avoid.

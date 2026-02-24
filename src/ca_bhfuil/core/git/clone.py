@@ -136,11 +136,11 @@ class AsyncRepositoryCloner:
         progress_callback: typing.Callable[[progress_models.CloneProgress], None]
         | None,
     ) -> typing.Any:
-        callbacks = pygit2.RemoteCallbacks()  # type: ignore[attr-defined,no-untyped-call]
+        callbacks = pygit2.RemoteCallbacks()
 
         if progress_callback:
             # Use setattr to work around mypy method assignment restrictions
-            callbacks.transfer_progress = self._create_progress_callback(  # type: ignore[method-assign]
+            callbacks.transfer_progress = self._create_progress_callback(  # type: ignore[assignment]
                 progress_callback
             )
 

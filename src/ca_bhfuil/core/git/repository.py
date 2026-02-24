@@ -61,7 +61,7 @@ class Repository:
         try:
             # Try exact match first
             if len(sha) == 40:  # Full SHA
-                commit = self._repo[sha]  # type: ignore[index]
+                commit = self._repo[sha]
             else:
                 # Try to resolve partial SHA
                 commit = self._repo.revparse_single(sha)
@@ -116,12 +116,12 @@ class Repository:
 
         try:
             # Get local branches
-            for branch in self._repo.branches.local:  # type: ignore[attr-defined]
+            for branch in self._repo.branches.local:
                 result["local"].append(branch)
 
             # Get remote branches if requested
             if include_remote:
-                for branch in self._repo.branches.remote:  # type: ignore[attr-defined]
+                for branch in self._repo.branches.remote:
                     result["remote"].append(branch)
 
         except Exception as e:
@@ -136,7 +136,11 @@ class Repository:
             List of remote names.
         """
         try:
-            return [remote.name for remote in self._repo.remotes]  # type: ignore[attr-defined]
+            return [
+                name
+                for remote in self._repo.remotes
+                if (name := remote.name) is not None
+            ]
         except Exception as e:
             logger.error(f"Remote listing failed: {e}")
             return []
@@ -152,7 +156,7 @@ class Repository:
         """
         try:
             tags = []
-            for ref_name in self._repo.references:  # type: ignore[attr-defined]
+            for ref_name in self._repo.references:
                 if ref_name.startswith("refs/tags/"):
                     tag_name = ref_name.replace("refs/tags/", "")
                     tags.append(tag_name)
@@ -178,10 +182,10 @@ class Repository:
         try:
             # Try to get the branch
             branch = None
-            if branch_name in self._repo.branches.local:  # type: ignore[attr-defined]
-                branch = self._repo.branches.local[branch_name]  # type: ignore[attr-defined]
-            elif branch_name in self._repo.branches.remote:  # type: ignore[attr-defined]
-                branch = self._repo.branches.remote[branch_name]  # type: ignore[attr-defined]
+            if branch_name in self._repo.branches.local:
+                branch = self._repo.branches.local[branch_name]
+            elif branch_name in self._repo.branches.remote:
+                branch = self._repo.branches.remote[branch_name]
 
             if not branch:
                 logger.warning(f"Branch not found: {branch_name}")
@@ -214,15 +218,15 @@ class Repository:
             containing_branches = []
 
             # Check all branches
-            all_branches = list(self._repo.branches.local) + list(  # type: ignore[attr-defined]
-                self._repo.branches.remote  # type: ignore[attr-defined]
+            all_branches = list(self._repo.branches.local) + list(
+                self._repo.branches.remote
             )
 
             for branch_name in all_branches:
                 try:
-                    branch = self._repo.branches.local.get(  # type: ignore[attr-defined]
+                    branch = self._repo.branches.local.get(
                         branch_name
-                    ) or self._repo.branches.remote.get(branch_name)  # type: ignore[attr-defined]
+                    ) or self._repo.branches.remote.get(branch_name)
                     if branch:
                         # Check if commit is reachable from branch
                         merge_base = self._repo.merge_base(commit_oid, branch.target)
@@ -245,9 +249,13 @@ class Repository:
             Dictionary with repository statistics.
         """
         try:
-            local_branches = list(self._repo.branches.local)  # type: ignore[attr-defined]
-            remote_branches = list(self._repo.branches.remote)  # type: ignore[attr-defined]
-            remotes = [remote.name for remote in self._repo.remotes]  # type: ignore[attr-defined]
+            local_branches = list(self._repo.branches.local)
+            remote_branches = list(self._repo.branches.remote)
+            remotes = [
+                name
+                for remote in self._repo.remotes
+                if (name := remote.name) is not None
+            ]
 
             # Count commits (approximate)
             commit_count = 0
