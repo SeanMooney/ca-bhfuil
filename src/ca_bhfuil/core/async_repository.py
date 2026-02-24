@@ -262,9 +262,9 @@ class AsyncRepositoryManager:
             head_sha = str(repo.head.target)
 
         # Count branches and remotes
-        local_branches = list(repo.branches.local)  # type: ignore[attr-defined]
-        remote_branches = list(repo.branches.remote)  # type: ignore[attr-defined]
-        remotes = [remote.name for remote in repo.remotes]  # type: ignore[attr-defined]
+        local_branches = list(repo.branches.local)
+        remote_branches = list(repo.branches.remote)
+        remotes = [remote.name for remote in repo.remotes]
 
         # Get repository state
         repo_state = "clean"
@@ -291,7 +291,7 @@ class AsyncRepositoryManager:
 
         try:
             # Try exact match first
-            commit = repo[sha] if len(sha) == 40 else repo.revparse_single(sha)  # type: ignore[index]
+            commit = repo[sha] if len(sha) == 40 else repo.revparse_single(sha)
 
             if not isinstance(commit, pygit2.Commit):
                 return None
